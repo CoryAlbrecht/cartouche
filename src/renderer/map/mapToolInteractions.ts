@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.ts
  * @module renderer/map/mapToolInteractions
- * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click, Select by Rectangle and Select by Lasso have handlers, which branch on the Selection Target at gesture time. With features they publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow; with vertices (Vertex Editor Mode) through {@link publishVertexSelection} to `selectedVertexKeysSignal`, leaving the feature selection alone.
+ * @description Tool-driven map interactions: what a primary click or drag on the map does under the active map tool. {@link MapToolInteractions}, owned by the MapController and fed from `activeToolSignal`, switches OpenLayers' default navigation gestures per tool ({@link resolveNavigationForTool}: Selection Tools turn off drag-pan and Shift+drag box zoom) and activates the tool's {@link MapToolHandler} from a handler table ({@link MAP_TOOL_HANDLERS}). Select by Click, Select by Rectangle and Select by Lasso have handlers, which branch on the Selection Target at gesture time. With features they publish through {@link publishFeatureSelection}, which applies the shared {@link mergeSelection} rule to `selectedFeatureIdsSignal`, so the map highlight and Attribute Table follow; with vertices (Vertex Editor Mode) through {@link publishVertexSelection} to `selectedVertexKeysSignal`, leaving the feature selection alone. Every path tests only the features the Active Layer displays now ({@link displayedFeaturesInExtent} with the layer's {@link FeatureDisplayPredicate}), so features the Time Filter hides are never selected.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -13,11 +13,11 @@
  * @see {@link createLassoShapeStyle}
  * @see {@link findTopmostVertexAt}
  * @see {@link findVerticesInRegion}
+ * @see {@link createFeatureDisplayPredicate}
  */
 
 import type OlMap from "ol/Map.js";
 import type MapBrowserEvent from "ol/MapBrowserEvent.js";
-import type VectorSource from "ol/source/Vector.js";
 import type { Signal } from "@preact/signals-react";
 import type Style from "ol/style/Style.js";
 import type { Coordinate } from "ol/coordinate.js";
@@ -51,7 +51,6 @@ import {
 import {
   findTopmostFeatureAt,
   SELECTION_HIT_TOLERANCE_PX,
-  type SymbolReachResolver,
 } from "./selectionHitTest";
 import {
   createSelectionRegion,
@@ -59,6 +58,10 @@ import {
   type SelectionRegion,
 } from "./selectionRegion";
 import { beginSelectionShape } from "./selectionShapeCancel";
+import {
+  displayedFeaturesInExtent,
+  type SelectableLayer,
+} from "./selectableLayer";
 import {
   createLassoShapeStyle,
   readLassoFillRule,
@@ -165,20 +168,7 @@ export function applyNavigationToMap(
   }
 }
 
-/**
- * @typedef {Object} SelectableLayer
- * @description The valid Active Layer as the Selection Tools see it: its features on the map and how far each feature's symbol reaches.
- * @property {VectorSource} source - The layer's OpenLayers vector source (features in the display CRS, ids = feature ids).
- * @property {SymbolReachResolver} [symbolReachPx] - Symbol reach per feature at the current resolution.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-20
- * @updated 2026-11-20
- * @since 0.1.0-dev
- */
-export interface SelectableLayer {
-  source: VectorSource;
-  symbolReachPx?: SymbolReachResolver;
-}
+export type { SelectableLayer };
 
 /**
  * @typedef {Object} MapToolContext
@@ -270,7 +260,7 @@ export function resolveClickHits(
     [coordinate[0], coordinate[1], coordinate[0], coordinate[1]],
     searchRadius
   );
-  const candidates = layer.source.getFeaturesInExtent(searchExtent);
+  const candidates = displayedFeaturesInExtent(layer, searchExtent);
   const hit = findTopmostFeatureAt(candidates, coordinate, resolution, {
     symbolReachPx: layer.symbolReachPx,
   });
@@ -392,7 +382,7 @@ export function selectVertexByClickAt(
     SELECTION_HIT_TOLERANCE_PX * resolution
   );
   const hit = findTopmostVertexAt(
-    layer.source.getFeaturesInExtent(searchExtent),
+    displayedFeaturesInExtent(layer, searchExtent),
     coordinate,
     resolution
   );
@@ -459,7 +449,7 @@ export function selectFeaturesInRegion(
 ): void {
   if (!layer) return;
   publishFeatureSelection(
-    findFeaturesOverlappingRegion(layer.source, region),
+    findFeaturesOverlappingRegion(layer.source, region, layer.isDisplayed),
     modifiers
   );
 }
@@ -488,7 +478,7 @@ export function selectInRegion(
   if (!layer) return;
   publishVertexSelection(
     findVerticesInRegion(
-      layer.source.getFeaturesInExtent(region.extent),
+      displayedFeaturesInExtent(layer, region.extent),
       region
     ),
     modifiers

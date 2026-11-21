@@ -88,6 +88,10 @@ import {
 } from "../map/timeFilterMath";
 import { listVertexKeys, type VertexKey } from "../map/vertexSelection";
 import type { VertexEditTarget } from "../map/vertexEditing";
+import {
+  displayedFeaturesInExtent,
+  type SelectableLayer,
+} from "../map/selectableLayer";
 import { deleteSelectedVerticesAction } from "../map/vertexDeletionAction";
 import type { ProjectTimeFilterConfig } from "../../shared/types";
 import {
@@ -889,7 +893,7 @@ export interface MapActionPayload {
  * @property {() => Map<string, any>} getVectorLayers - Returns all registered vector layer entries.
  * @property {() => any} getMap - Returns underlying OpenLayers map instance.
  * @property {() => any} getView - Returns OpenLayers view instance.
- * @property {() => ({ source: any } | null)} [getSelectableLayer] - The valid Active Layer (vector, on the map, visible) the Selection Tools act on, or null.
+ * @property {() => (SelectableLayer | null)} [getSelectableLayer] - The valid Active Layer (vector, on the map, visible) the Selection Tools act on, with its display predicate, or null.
  * @property {() => (VertexEditTarget | null)} [getVertexEditTarget] - The valid Active Layer with its id and CRS pair, for committing vertex edits, or null.
  */
 export interface ActiveMapController {
@@ -911,7 +915,7 @@ export interface ActiveMapController {
   getVectorLayers(): Map<string, any>;
   getMap(): any;
   getView(): any;
-  getSelectableLayer?(): { source: any } | null;
+  getSelectableLayer?(): SelectableLayer | null;
   getVertexEditTarget?(): VertexEditTarget | null;
 }
 
@@ -3328,7 +3332,7 @@ export function zoomToLayerAction(): void {
 
 /**
  * @function selectAllAction
- * @description Selects all items of the active layer: in Vertex Editor Mode every vertex of the valid Active Layer's features on the map (nothing without one), otherwise all its features.
+ * @description Selects all items of the active layer that the map displays now: in Vertex Editor Mode every vertex of the valid Active Layer's displayed features on the map (nothing without one), otherwise all its features, skipping those the Time Filter hides (the selectable layer's display predicate, tested on each Attribute Table row's attributes).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
  * @updated 2026-11-20
@@ -3340,14 +3344,21 @@ export function selectAllAction(): void {
     const layer = activeMapControllerSignal.value?.getSelectableLayer?.();
     if (!layer) return;
     selectedVertexKeysSignal.value = new Set(
-      listVertexKeys(layer.source.getFeatures())
+      listVertexKeys(displayedFeaturesInExtent(layer))
     );
     return;
   }
   const activeId = activeLayerIdSignal.value;
+  const isDisplayed =
+    activeId ?
+      activeMapControllerSignal.value?.getSelectableLayer?.()?.isDisplayed
+    : undefined;
   const targetFeatures =
     activeId ?
-      featuresSignal.value.filter((f) => f.layerId === activeId)
+      featuresSignal.value.filter(
+        (f) =>
+          f.layerId === activeId && (!isDisplayed || isDisplayed(f.properties))
+      )
     : featuresSignal.value;
   selectedFeatureIdsSignal.value = new Set(targetFeatures.map((f) => f.id));
 }

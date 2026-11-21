@@ -18,6 +18,7 @@ import {
   containsCoordinate as extentContainsCoordinate,
 } from "ol/extent.js";
 import type Geometry from "ol/geom/Geometry.js";
+import type Feature from "ol/Feature.js";
 import type VectorSource from "ol/source/Vector.js";
 
 /**
@@ -341,24 +342,27 @@ export function geometryOverlapsRegion(
 
 /**
  * @function findFeaturesOverlappingRegion
- * @description The ids of a vector source's features whose geometry overlaps a Selection Region: candidates from the source's spatial index over the region's bounding box, then {@link geometryOverlapsRegion}. Features without a geometry or id are skipped.
+ * @description The ids of a vector source's features whose geometry overlaps a Selection Region: candidates from the source's spatial index over the region's bounding box, then {@link geometryOverlapsRegion}. Features without a geometry or id are skipped, and so are features the optional display predicate rejects (those the Time Filter hides).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {VectorSource} source - Vector source (features in the region's CRS).
  * @param {SelectionRegion} region - The region.
+ * @param {(feature: Feature) => boolean} [isDisplayed] - Whether a feature is displayed now; every feature counts as displayed when omitted.
  * @returns {Array<string | number>} Overlapping feature ids.
  */
 export function findFeaturesOverlappingRegion(
   source: VectorSource,
-  region: SelectionRegion
+  region: SelectionRegion,
+  isDisplayed?: (feature: Feature) => boolean
 ): Array<string | number> {
   const ids: Array<string | number> = [];
   for (const feature of source.getFeaturesInExtent(region.extent)) {
     const geometry = feature.getGeometry();
     const id = feature.getId();
     if (!geometry || id === undefined) continue;
+    if (isDisplayed && !isDisplayed(feature)) continue;
     if (geometryOverlapsRegion(geometry, region)) ids.push(id);
   }
   return ids;

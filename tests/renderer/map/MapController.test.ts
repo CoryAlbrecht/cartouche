@@ -1,7 +1,7 @@
 /**
  * @file MapController.test.ts
  * @module tests/renderer/map/MapController.test
- * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, and viewport auto-fitting.
+ * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, viewport auto-fitting, and keeping features the Time Filter hides out of the selection (Ticket #386).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
  * @updated 2026-11-20
@@ -31,6 +31,11 @@ import {
   selectedVertexKeysSignal,
 } from "../../../src/renderer/state/gisSignals";
 import { preferencesMapSignal } from "../../../src/renderer/state/preferencesSignals";
+import {
+  resetTimeFilterState,
+  setTimeFilterActive,
+  setTimeFilterFrame,
+} from "../../../src/renderer/state/timeFilterSignals";
 import {
   MapController,
   extractStyleAttributes,
@@ -3215,5 +3220,163 @@ describe("MapController drives map interactions from the active tool (Ticket #37
     controller.dispose();
     click([7.5e5, 7.5e5]);
     assert.equal(selectedFeatureIdsSignal.value.size, 0);
+  });
+});
+
+describe("MapController keeps features the Time Filter hides out of the selection (Ticket #386)", () => {
+  let container: any;
+  let controller: MapController;
+  const descriptor: LayerDescriptor = {
+    id: "layer-time-test",
+    name: "Time Test",
+    type: "shp",
+    source: "/path/to/time.shp",
+    geometryKind: "Polygon",
+    layerKind: "vector",
+    extent: [-90, 40, -80, 50],
+    featureCount: 2,
+    temporal: {
+      enabled: true,
+      mode: "start",
+      startField: "begin",
+      startOp: ">=",
+    },
+  };
+
+  /**
+   * @function datedSquare
+   * @description Builds a square polygon feature in map units with a `begin` date.
+   * @param {number} id - Feature id.
+   * @param {number} min - Lower-left x and y.
+   * @param {number} max - Upper-right x and y.
+   * @param {number} begin - Start date in UTC epoch milliseconds.
+   * @returns {Feature} Polygon feature.
+   */
+  function datedSquare(
+    id: number,
+    min: number,
+    max: number,
+    begin: number
+  ): Feature {
+    const f = new Feature({
+      geometry: new Polygon([
+        [
+          [min, min],
+          [max, min],
+          [max, max],
+          [min, max],
+          [min, min],
+        ],
+      ]),
+      begin,
+    });
+    f.setId(id);
+    return f;
+  }
+
+  /**
+   * @function click
+   * @description Dispatches a plain primary click map event at a coordinate.
+   * @param {number[]} coordinate - Click coordinate in map units.
+   * @returns {void}
+   */
+  function click(coordinate: number[]): void {
+    const map = controller.getMap();
+    const evt = new MapBrowserEvent(
+      "click",
+      map,
+      fromPartial<PointerEvent>({ shiftKey: false, ctrlKey: false })
+    );
+    evt.coordinate = coordinate;
+    map.dispatchEvent(evt);
+  }
+
+  beforeEach(() => {
+    resetTimeFilterState();
+    projectLayersSignal.value = [];
+    activeToolSignal.value = "pan";
+    container = document.createElement("div");
+    controller = new MapController(container);
+    projectLayersSignal.value = [descriptor];
+    // Square 2 is drawn on top and starts later than square 1.
+    controller
+      .getLayer(descriptor.id)!
+      .source.addFeatures([
+        datedSquare(1, 0, 1e6, 0),
+        datedSquare(2, 5e5, 1.5e6, 5000),
+      ]);
+    activeLayerIdSignal.value = descriptor.id;
+    selectedFeatureIdsSignal.value = new Set();
+    selectedVertexKeysSignal.value = new Set();
+  });
+
+  afterEach(() => {
+    controller.dispose();
+    resetTimeFilterState();
+    vertexEditorModeSignal.value = false;
+    activeToolSignal.value = "pan";
+    projectLayersSignal.value = [];
+    selectedFeatureIdsSignal.value = new Set();
+    selectedVertexKeysSignal.value = new Set();
+    activeLayerIdSignal.value = null;
+  });
+
+  it("supplies a display predicate with the selectable layer, so a click skips a hidden feature", () => {
+    activeToolSignal.value = "select_click";
+    setTimeFilterFrame(1000, 2000);
+    setTimeFilterActive(true);
+    click([7.5e5, 7.5e5]);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    setTimeFilterActive(false);
+    click([7.5e5, 7.5e5]);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+  });
+
+  it("removes features (and their vertices) a time-step hides from the selection; stepping back does not restore them", () => {
+    selectedFeatureIdsSignal.value = new Set([1, 2]);
+    selectedVertexKeysSignal.value = new Set([
+      vertexKey(1, [0, 0]),
+      vertexKey(2, [0, 0]),
+    ]);
+    setTimeFilterFrame(6000, 7000);
+    setTimeFilterActive(true);
+    assert.deepEqual([...selectedFeatureIdsSignal.value].sort(), [1, 2]);
+    setTimeFilterFrame(1000, 2000);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value],
+      [vertexKey(1, [0, 0])]
+    );
+    setTimeFilterFrame(6000, 7000);
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+    assert.equal(selectedVertexKeysSignal.value.size, 1);
+  });
+
+  it("prunes the selection when the Active Layer's temporal configuration changes", () => {
+    setTimeFilterFrame(1000, 2000);
+    setTimeFilterActive(true);
+    projectLayersSignal.value = [{ ...descriptor, temporal: undefined }];
+    selectedFeatureIdsSignal.value = new Set([1, 2]);
+    projectLayersSignal.value = [descriptor];
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+
+  it("draws no Vertex Markers for hidden features", () => {
+    vertexEditorModeSignal.value = true;
+    setTimeFilterFrame(1000, 2000);
+    setTimeFilterActive(true);
+    const overlay = controller.getVertexMarkerLayer();
+    assert.equal(overlay !== null, true, "overlay in Vertex Editor Mode");
+    const source = controller.getLayer(descriptor.id)!.source;
+    const style = overlay!.getStyleFunction()!;
+    // Compare counts: a failing assert would try to print whole OpenLayers objects.
+    const count = (id: number): number => {
+      const styles = style(source.getFeatureById(id)!, 1);
+      return Array.isArray(styles) ? styles.length : Number(Boolean(styles));
+    };
+    assert.equal(count(2), 0, "hidden feature has no markers");
+    assert.equal(count(1) > 0, true, "displayed feature has markers");
+    setTimeFilterActive(false);
+    assert.equal(count(2) > 0, true, "markers return with the Time Filter off");
   });
 });

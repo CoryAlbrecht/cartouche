@@ -1,7 +1,7 @@
 /**
  * @file mapToolInteractions.test.ts
  * @module tests/renderer/map/mapToolInteractions.test
- * @description Tests for the tool-driven map interactions (including vertex selection in Vertex Editor Mode, Ticket #382): which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, how Select by Lasso selects what its freehand outline encloses under the Lasso Fill Rule (with release modifiers, Escape, pass-through of other buttons and Alt drags, and no selectable layer), and how the tool's handler is swapped as the active tool changes.
+ * @description Tests for the tool-driven map interactions (including vertex selection in Vertex Editor Mode, Ticket #382): which default navigation gestures each map tool leaves on (Selection Tools turn off drag-pan and Shift+drag zoom), how Select by Click resolves a click to the Active Layer's topmost feature, how a gesture's hits are published to the shared feature selection, how Select by Rectangle selects the features overlapping its rectangle and which drags start a Selection Shape, how Select by Lasso selects what its freehand outline encloses under the Lasso Fill Rule (with release modifiers, Escape, pass-through of other buttons and Alt drags, and no selectable layer), how the tool's handler is swapped as the active tool changes, and how every selection path skips features the Time Filter hides (the selectable layer's `isDisplayed` predicate, Ticket #386).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
@@ -46,6 +46,7 @@ import {
   isSelectionShapeDragStart,
   MapToolInteractions,
   type MapToolContext,
+  type SelectableLayer,
   type MapToolHandler,
 } from "../../../src/renderer/map/mapToolInteractions";
 import { createRectangleRegion } from "../../../src/renderer/map/selectionRegion";
@@ -381,6 +382,61 @@ describe("vertex selection (Selection Target vertices)", () => {
       NONE
     );
     assert.deepEqual([...selectedFeatureIdsSignal.value], [1]);
+  });
+});
+
+describe("Time Filter: features hidden from display are not selectable (Ticket #386)", () => {
+  /**
+   * @function layerHiding
+   * @description A selectable layer with overlapping squares 1 ([0,10]) and 2 ([5,15], drawn on top) whose display predicate hides the given ids.
+   * @param {Array<number>} hidden - Ids the Time Filter hides.
+   * @returns {SelectableLayer} Layer.
+   */
+  function layerHiding(hidden: number[]): SelectableLayer {
+    const source = new VectorSource();
+    source.addFeatures([polygonFeature(1, 0, 10), polygonFeature(2, 5, 15)]);
+    return {
+      source,
+      isDisplayed: (feature) =>
+        !(
+          feature instanceof Feature && hidden.includes(Number(feature.getId()))
+        ),
+    };
+  }
+
+  beforeEach(() => {
+    vertexEditorModeSignal.value = false;
+    selectedFeatureIdsSignal.value = new Set();
+    selectedVertexKeysSignal.value = new Set();
+  });
+
+  it("Select by Click hits the displayed feature under a hidden topmost one", () => {
+    assert.deepEqual(resolveClickHits(layerHiding([2]), [7, 7], 1), [1]);
+    assert.deepEqual(resolveClickHits(layerHiding([2]), [14, 14], 1), []);
+  });
+
+  it("an area selection skips hidden features", () => {
+    selectFeaturesInRegion(
+      layerHiding([1]),
+      createRectangleRegion([0, 0, 20, 20]),
+      NONE
+    );
+    assert.deepEqual([...selectedFeatureIdsSignal.value], [2]);
+  });
+
+  it("vertex click and area selection skip hidden features' vertices", () => {
+    vertexEditorModeSignal.value = true;
+    selectVertexByClickAt(layerHiding([1]), [0, 0], 1, NONE);
+    assert.equal(selectedVertexKeysSignal.value.size, 0);
+    selectInRegion(
+      layerHiding([2]),
+      createRectangleRegion([4, 4, 11, 11]),
+      NONE
+    );
+    assert.deepEqual(
+      [...selectedVertexKeysSignal.value],
+      [vertexKey(1, [0, 2])]
+    );
   });
 });
 

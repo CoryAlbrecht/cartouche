@@ -4,19 +4,26 @@
  * @description Unit tests for temporal predicate engine verifying Start Field, End Field, and Start and End Fields modes, comparison operators, boundary clamping, and null handling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link evaluateTemporalPredicate}
  * @see {@link parseTemporalValue}
+ * @see {@link createFeatureDisplayPredicate}
  */
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import Feature from "ol/Feature.js";
 import {
+  createFeatureDisplayPredicate,
   evaluateTemporalPredicate,
   parseTemporalValue,
 } from "../../../src/renderer/map/temporalPredicate";
+import {
+  isTimeFilterActiveSignal,
+  timeFilterFrameEndSignal,
+  timeFilterFrameStartSignal,
+} from "../../../src/renderer/state/timeFilterSignals";
 import type { LayerTemporalConfig } from "../../../src/shared/types/project";
 
 describe("temporalPredicate: parseTemporalValue (Ticket #234)", () => {
@@ -566,5 +573,45 @@ describe("temporalPredicate: Undated Features and partial-date fallback (Ticket 
       true,
       "End Field mode with no end field"
     );
+  });
+});
+
+describe("temporalPredicate: createFeatureDisplayPredicate (Ticket #386)", () => {
+  const config: LayerTemporalConfig = {
+    enabled: true,
+    mode: "start",
+    startField: "begin",
+    startOp: ">=",
+  };
+
+  it("treats every feature as displayed without Dynamic Temporal Control", () => {
+    isTimeFilterActiveSignal.value = true;
+    timeFilterFrameStartSignal.value = 0;
+    timeFilterFrameEndSignal.value = 0;
+    const late = new Feature({ begin: 5000 });
+    assert.strictEqual(createFeatureDisplayPredicate(undefined)(late), true);
+    assert.strictEqual(
+      createFeatureDisplayPredicate({ ...config, enabled: false })(late),
+      true
+    );
+    isTimeFilterActiveSignal.value = false;
+  });
+
+  it("follows the live Time Filter state: off shows all, each frame hides what the style hides", () => {
+    const isDisplayed = createFeatureDisplayPredicate(config);
+    const late = new Feature({ begin: 5000 });
+    const undated = new Feature({ begin: null });
+    isTimeFilterActiveSignal.value = false;
+    assert.strictEqual(isDisplayed(late), true, "Time Filter off");
+    isTimeFilterActiveSignal.value = true;
+    timeFilterFrameStartSignal.value = 1000;
+    timeFilterFrameEndSignal.value = 2000;
+    assert.strictEqual(isDisplayed(late), false, "frame before its start");
+    assert.strictEqual(isDisplayed(undated), true, "Undated Feature");
+    assert.strictEqual(isDisplayed({ begin: 5000 }), false, "property bag");
+    timeFilterFrameStartSignal.value = 6000;
+    timeFilterFrameEndSignal.value = 7000;
+    assert.strictEqual(isDisplayed(late), true, "frame after its start");
+    isTimeFilterActiveSignal.value = false;
   });
 });

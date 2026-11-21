@@ -8,6 +8,7 @@
  * @since 0.1.0-dev
  * @see {@link listVertices}
  * @see {@link selectedVertexKeysSignal}
+ * @see {@link createFeatureDisplayPredicate}
  */
 
 import type { FeatureLike } from "ol/Feature.js";
@@ -23,6 +24,7 @@ import {
   type VertexKey,
 } from "./vertexSelection";
 import { readThemeTokens, type ThemeTokenReference } from "./themeTokenReader";
+import type { FeatureDisplayPredicate } from "./temporalPredicate";
 
 /**
  * @description Theme token holding the vertex marker outline colour, as a {@link ThemeTokenReference} (see {@link readThemeTokens} for why the `var()` form).
@@ -155,18 +157,20 @@ function squareMarker(
 
 /**
  * @function createVertexMarkerStyleFunction
- * @description Creates the style function of the vertex marker overlay: for a feature with an id and geometry, one Style placing an unselected marker on every vertex (a MultiPoint geometry function over {@link listVertices}), plus, when some of its vertices are selected, one Style placing a larger Selection Colour marker on those. Marker images are shared by all features.
+ * @description Creates the style function of the vertex marker overlay: for a feature with an id and geometry that is displayed now (features the Time Filter hides get no markers), one Style placing an unselected marker on every vertex (a MultiPoint geometry function over {@link listVertices}), plus, when some of its vertices are selected, one Style placing a larger Selection Colour marker on those. Marker images are shared by all features.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
  * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {VertexMarkerColours} colours - Marker colours.
  * @param {ReadonlyMap<string | number, ReadonlySet<string>>} selected - Selected joined vertex paths per feature id ({@link groupVertexKeysByFeature}).
+ * @param {FeatureDisplayPredicate} [isDisplayed] - Whether a feature is displayed now ({@link createFeatureDisplayPredicate}); every feature counts as displayed when omitted.
  * @returns {StyleFunction} Style function for the overlay layer.
  */
 export function createVertexMarkerStyleFunction(
   colours: VertexMarkerColours,
-  selected: ReadonlyMap<string | number, ReadonlySet<string>>
+  selected: ReadonlyMap<string | number, ReadonlySet<string>>,
+  isDisplayed?: FeatureDisplayPredicate
 ): StyleFunction {
   const marker = squareMarker(
     VERTEX_MARKER_RADIUS,
@@ -182,6 +186,7 @@ export function createVertexMarkerStyleFunction(
     const geometry = feature.getGeometry() as Geometry | undefined;
     const id = feature.getId();
     if (!geometry || id === undefined) return [];
+    if (isDisplayed && !isDisplayed(feature)) return [];
     const vertices = listVertices(geometry);
     const styles = [
       new Style({

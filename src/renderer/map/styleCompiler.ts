@@ -4,7 +4,7 @@
  * @description Headless Renderer style compiler and feature attribute extractor supporting Cartouche Symbology Specification, Canvas 2D linear gradient fills, native OpenLayers Flat Styles, and OGC Styled Layer Descriptor (SLD) 1.0.0/1.1.0 XML via cached GeoStyler parsers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-11
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @see {@link compileLayerStyle}
  * @see {@link compileCartoucheLayerStyleSync}
@@ -39,7 +39,7 @@ import type {
   GradientFillComponent,
   LayerTemporalConfig,
 } from "../../shared/types";
-import { evaluateTemporalPredicate } from "./temporalPredicate";
+import { createFeatureDisplayPredicate } from "./temporalPredicate";
 
 /**
  * Cached SLD 1.0.0 parser singleton instance.
@@ -820,11 +820,11 @@ export function compileStyleFunction(
 
 /**
  * @function wrapStyleWithTemporalFilter
- * @description Wraps an OpenLayers style or StyleFunction with temporal predicate filtering, returning null when the feature fails the active temporal condition.
+ * @description Wraps an OpenLayers style or StyleFunction with temporal predicate filtering, returning null when the feature fails the active temporal condition. The test is the layer's {@link createFeatureDisplayPredicate}, the same predicate the Selection Tools use, so hidden features are never selectable.
  * OpenLayers Flat Style JSON (a flat style dictionary, an array of them, or an array of rules) is first compiled into a StyleFunction via `flatStyleLikeToStyleFunction`, because a StyleFunction must return `Style` instances rather than Flat Style JSON.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-20
  * @since 0.1.0-dev
  * @param {any} baseStyle - Compiled OpenLayers Style, Style array, StyleFunction, or OpenLayers Flat Style JSON.
  * @param {LayerTemporalConfig | undefined} temporal - Layer dynamic temporal configuration.
@@ -839,8 +839,9 @@ export function wrapStyleWithTemporalFilter(
   }
 
   if (typeof baseStyle === "function") {
+    const isDisplayed = createFeatureDisplayPredicate(temporal);
     return (feature: any, resolution: number): any => {
-      if (!evaluateTemporalPredicate(feature, temporal)) {
+      if (!isDisplayed(feature)) {
         return null;
       }
       return baseStyle(feature, resolution);
