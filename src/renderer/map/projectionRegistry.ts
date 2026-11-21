@@ -4,13 +4,14 @@
  * @description Display CRS resolution and OpenLayers CRS registration for the map viewport (ADR 0033). Resolves which CRS the map draws in (the Project CRS, EPSG:3857 when none is set, or the raw cartesian "No CRS" pseudo-CRS), registers arbitrary CRSs with OpenLayers through `proj4` from a supplied definition or one fetched from the main process (GDAL `toProj4`), and supplies the runtime assumption that a layer with no declared CRS is EPSG:3857.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @see {@link MapController}
  * @see {@link ProjectCrs}
  */
 
 import proj4 from "proj4";
+import type { ProjectionDefinition } from "proj4";
 import { register } from "ol/proj/proj4.js";
 import OlCrsDefinition from "ol/proj/Projection.js";
 import { get as getProjection, addProjection } from "ol/proj.js";
@@ -150,10 +151,10 @@ export function isProjectionRegistered(code: string): boolean {
 
 /**
  * @function registerProjectionDefinition
- * @description Registers a CRS code with OpenLayers from a proj4 definition string.
+ * @description Registers a CRS code with OpenLayers from a proj4 definition string. The definition is first built once by proj4js without being stored, so one that proj4js cannot build (e.g. a method it does not implement) is refused before it reaches proj4's global definition store: `proj4.defs` stores definitions unchecked and `register(proj4)` builds every stored definition, so a stored bad one would make every later registration fail (#385). If registering still throws, the code's previous definition (or none) is put back.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-13
+ * @updated 2026-11-21
  * @since 0.1.0-dev
  * @param {string} code - CRS code (e.g. `EPSG:2154`).
  * @param {string} definition - proj4 definition.
@@ -164,16 +165,40 @@ export function registerProjectionDefinition(
   definition: string
 ): boolean {
   try {
+    proj4(definition);
+  } catch (err) {
+    return warnRegistrationFailed(code, err);
+  }
+  // proj4's typings omit the `undefined` that `defs(code)` returns for an unknown code.
+  const previous: ProjectionDefinition | undefined = proj4.defs(code);
+  try {
     proj4.defs(code, definition);
     register(proj4);
     return Boolean(getProjection(code));
   } catch (err) {
-    logging.warn("Failed to register CRS definition", err, {
-      scope: "projectionRegistry",
-      code,
-    });
-    return false;
+    // Passing `undefined` back deletes the code from proj4's store. OpenLayers has no public way to drop a CRS that `register` added before throwing; this path is only reachable when other code stored a bad definition.
+    proj4.defs(code, previous as ProjectionDefinition);
+    return warnRegistrationFailed(code, err);
   }
+}
+
+/**
+ * @function warnRegistrationFailed
+ * @description Logs a failed CRS registration against the code being registered (not an earlier one).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-21
+ * @updated 2026-11-21
+ * @since 0.1.0-dev
+ * @param {string} code - CRS code that failed.
+ * @param {unknown} err - Error proj4js or OpenLayers threw.
+ * @returns {false} Always false, the registration result.
+ */
+function warnRegistrationFailed(code: string, err: unknown): false {
+  logging.warn("Failed to register CRS definition", err, {
+    scope: "projectionRegistry",
+    code,
+  });
+  return false;
 }
 
 /**
