@@ -4,7 +4,7 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-21
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
@@ -101,7 +101,11 @@ import {
   isCartoucheStyleDescriptor,
 } from "./styleCompiler";
 import {
-  WKB_PACKET_MAGIC,
+  decodeFeaturePacket,
+  featurePacketOf,
+  type FeaturePacketRecord,
+} from "../../shared/layers/featurePacket";
+import {
   type InferredFieldType,
   type LayerDescriptor,
   type LayerTemporalConfig,
@@ -1417,10 +1421,10 @@ export class MapController {
   }
 
   /**
-   * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization and dynamic style field selection.
+   * @description Fetches visible feature slices via IPC layers:queryExtent using zero-copy contiguous binary WKB packet deserialization ({@link decodeFeaturePacket}) and dynamic style field selection. Each OpenLayers feature's ID is the record's Feature ID, string or number, so it matches the Attribute Table's rows and the shared feature selection.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-21
+   * @updated 2026-11-22
    * @since 0.1.0-dev
    * @param {LayerDescriptor} descriptor - Spatial layer metadata descriptor.
    * @param {VectorSource} source - Target vector source.
@@ -1587,99 +1591,61 @@ export class MapController {
 
         const dataProjection = queryParams.dataProjection;
 
-        let buffer: ArrayBuffer | null = null;
-        if ("buffer" in result && result.buffer) {
-          if (result.buffer instanceof ArrayBuffer) {
-            buffer = result.buffer;
-          } else if (
-            typeof ArrayBuffer !== "undefined"
-            && ArrayBuffer.isView(result.buffer)
-          ) {
-            const view = result.buffer as ArrayBufferView;
-            const copy = new Uint8Array(view.byteLength);
-            copy.set(
-              new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
-            );
-            buffer = copy.buffer;
-          }
-        }
+        const packet = featurePacketOf(result);
 
-        if (buffer && buffer.byteLength >= 12) {
-          const view = new DataView(buffer);
-          const magic = view.getUint32(0, true);
-          if (magic === WKB_PACKET_MAGIC) {
-            const featureCount = view.getUint32(8, true);
-            let offset = 12;
-            const decoder = new TextDecoder();
-
-            for (let i = 0; i < featureCount; i++) {
-              if (offset + 12 > buffer.byteLength) {
-                break;
-              }
-
-              const fid = Number(view.getBigInt64(offset, true));
-              offset += 8;
-
-              const wkbLen = view.getUint32(offset, true);
-              offset += 4;
-
-              let geometry: any = null;
-              if (wkbLen > 0 && offset + wkbLen <= buffer.byteLength) {
-                const wkbSlice = new Uint8Array(buffer, offset, wkbLen);
-                offset += wkbLen;
-                try {
-                  geometry = this.wkbFormat.readGeometry(wkbSlice, {
-                    dataProjection,
-                    featureProjection: queryParams.featureProjection,
-                  });
-                } catch (geomErr) {
-                  logging.warn(
-                    "Failed to parse WKB geometry for feature",
-                    geomErr,
-                    { scope: "MapController", fid, layerId: descriptor.id }
-                  );
-                }
-              }
-
-              if (offset + 4 > buffer.byteLength) {
-                break;
-              }
-              const propsLen = view.getUint32(offset, true);
-              offset += 4;
-
-              let properties: Record<string, any> = {};
-              if (propsLen > 0 && offset + propsLen <= buffer.byteLength) {
-                try {
-                  const propsSlice = new Uint8Array(buffer, offset, propsLen);
-                  properties = JSON.parse(decoder.decode(propsSlice));
-                } catch (propsErr) {
-                  logging.warn(
-                    "Failed to parse properties for feature",
-                    propsErr,
-                    { scope: "MapController", fid, layerId: descriptor.id }
-                  );
-                }
-                offset += propsLen;
-              }
-
-              // Deduplicate by ID to prevent duplicate entities during pan overlaps
-              if (geometry && !source.getFeatureById(fid)) {
-                const feature = new Feature({ geometry });
-                attachFeaturePropertiesWithLazyGetters(
-                  feature,
-                  properties,
-                  fieldSchema
-                );
-                feature.setId(fid);
-                newFeatures.push(feature);
-              }
-            }
-          } else {
-            logging.warn("Invalid WKB packet magic header", {
+        if (packet) {
+          let records: FeaturePacketRecord[] = [];
+          try {
+            records = decodeFeaturePacket(packet);
+          } catch (packetErr) {
+            logging.warn("Invalid WKB Feature Packet", packetErr, {
               scope: "MapController",
-              magic: `0x${magic.toString(16)}`,
               layerId: descriptor.id,
             });
+          }
+          const decoder = new TextDecoder();
+          for (const record of records) {
+            const featureId = record.id;
+            let geometry: any = null;
+            if (record.wkb) {
+              try {
+                geometry = this.wkbFormat.readGeometry(record.wkb, {
+                  dataProjection,
+                  featureProjection: queryParams.featureProjection,
+                });
+              } catch (geomErr) {
+                logging.warn(
+                  "Failed to parse WKB geometry for feature",
+                  geomErr,
+                  { scope: "MapController", featureId, layerId: descriptor.id }
+                );
+              }
+            }
+
+            let properties: Record<string, any> = {};
+            if (record.properties) {
+              try {
+                properties = JSON.parse(decoder.decode(record.properties));
+              } catch (propsErr) {
+                logging.warn(
+                  "Failed to parse properties for feature",
+                  propsErr,
+                  { scope: "MapController", featureId, layerId: descriptor.id }
+                );
+              }
+            }
+
+            // Deduplicate by ID to prevent duplicate entities during pan overlaps
+            if (geometry && !source.getFeatureById(featureId)) {
+              const feature = new Feature({ geometry });
+              attachFeaturePropertiesWithLazyGetters(
+                feature,
+                properties,
+                fieldSchema
+              );
+              feature.setId(featureId);
+              newFeatures.push(feature);
+            }
           }
         } else if ("features" in result && Array.isArray(result.features)) {
           // Legacy object array fallback

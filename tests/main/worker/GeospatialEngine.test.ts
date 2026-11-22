@@ -4,7 +4,7 @@
  * @description Unit and integration tests for GeospatialEngine dataset opening, metadata resolution, spatial filtering, WKB extraction, and concurrent query execution.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link GeospatialEngine}
  */
@@ -31,6 +31,8 @@ import {
   buildPagedSelectSql,
   supportsSqlWindow,
 } from "../../../src/main/worker/GeospatialEngine";
+import { resolveFeatureIdentity } from "../../../src/main/worker/featureIdentity";
+import { decodeFeaturePacket } from "../../../src/shared/layers/featurePacket";
 import { classifyDriverDialect } from "../../../src/shared/layers/queryDialect";
 import type {
   BoundingBox,
@@ -60,6 +62,21 @@ const timelineGpkgPath = path.resolve(
   __dirname,
   "../../data/timeline_level_0.gpkg"
 );
+
+/**
+ * @function identityOf
+ * @description Resolves the feature identity of a layer from its driver's registry row, for the SQL builder tests.
+ * @param {string} driverName - GDAL driver short name.
+ * @param {string} fidColumn - Persistent FID column, or an empty string.
+ * @param {readonly string[]} [fieldNames] - Attribute field names.
+ * @returns {ReturnType<typeof resolveFeatureIdentity>} The feature identity.
+ */
+const identityOf = (
+  driverName: string,
+  fidColumn: string,
+  fieldNames: readonly string[] = []
+) =>
+  resolveFeatureIdentity({ driverName, layerName: "t", fidColumn, fieldNames });
 
 /**
  * @function assertExtentClose
@@ -542,46 +559,34 @@ describe("GeospatialEngine Contiguous Binary WKB Packet Serialization", () => {
       WKB_PACKET_MAGIC,
       'Magic bytes must equal 0x43415254 (ASCII "CART")'
     );
-    assert.equal(version, WKB_PACKET_VERSION, "Version must equal 1");
+    assert.equal(version, WKB_PACKET_VERSION);
     assert.equal(flags, WKB_FLAG_HAS_GEOMETRY | WKB_FLAG_HAS_PROPERTIES);
     assert.equal(featureCount, 34, "Expected 34 features in bounding box");
 
-    // Parse sequential records
-    let offset = 12;
     const decoder = new TextDecoder();
-    for (let i = 0; i < featureCount; i++) {
-      const fid = view.getBigInt64(offset, true);
-      assert.ok(fid >= 0n, "FID must be non-negative BigInt");
-      offset += 8;
-
-      const wkbLen = view.getUint32(offset, true);
-      assert.ok(wkbLen > 0, "Geometry WKB length must be positive");
-      offset += 4;
-
-      const wkbSlice = new Uint8Array(result.buffer, offset, wkbLen);
-      const geom = wkbFormat.readGeometry(wkbSlice);
+    const records = decodeFeaturePacket(result.buffer);
+    assert.equal(records.length, featureCount);
+    for (const record of records) {
+      assert.ok(
+        typeof record.id === "number" && record.id >= 0,
+        "Feature ID must be a non-negative number"
+      );
+      assert.ok(record.wkb, "Geometry WKB must be present");
+      const geom = wkbFormat.readGeometry(record.wkb);
       assert.ok(geom, "OpenLayers WKB reader must parse geometry");
       assert.ok(
         geom.getType().includes("Polygon"),
         "Geometry type should be Polygon or MultiPolygon"
       );
-      offset += wkbLen;
-
-      const propsLen = view.getUint32(offset, true);
-      assert.ok(propsLen > 0, "Properties length must be positive");
-      offset += 4;
-
-      const propsBytes = new Uint8Array(result.buffer, offset, propsLen);
-      const props = JSON.parse(decoder.decode(propsBytes));
+      assert.ok(record.properties, "Properties must be present");
+      const props = JSON.parse(decoder.decode(record.properties));
       assert.ok(typeof props === "object" && props !== null);
       assert.ok("name" in props || "NAME" in props);
-      offset += propsLen;
     }
-
-    assert.equal(
-      offset,
-      result.buffer.byteLength,
-      "Offset must match exact buffer byteLength"
+    assert.deepEqual(
+      records.map((r) => r.id),
+      result.features.map((f) => f.id),
+      "The packet and the feature list carry the same Feature IDs"
     );
   });
 
@@ -592,29 +597,18 @@ describe("GeospatialEngine Contiguous Binary WKB Packet Serialization", () => {
     };
 
     const result = await engine.queryExtent("lakes-bin-test", options);
-    const view = new DataView(result.buffer);
-    const flags = view.getUint16(6, true);
-    const count = view.getUint32(8, true);
-
+    const flags = new DataView(result.buffer).getUint16(6, true);
     assert.equal(
       flags & WKB_FLAG_HAS_GEOMETRY,
       0,
       "FLAG_HAS_GEOMETRY must be unset"
     );
-    assert.equal(count, 34);
-
-    let offset = 12;
-    for (let i = 0; i < count; i++) {
-      offset += 8; // fid
-      const wkbLen = view.getUint32(offset, true);
-      assert.equal(wkbLen, 0, "wkbLength must be 0 when geometry is omitted");
-      offset += 4;
-      const propsLen = view.getUint32(offset, true);
-      assert.ok(propsLen > 0);
-      offset += 4 + propsLen;
+    const records = decodeFeaturePacket(result.buffer);
+    assert.equal(records.length, 34);
+    for (const record of records) {
+      assert.equal(record.wkb, null, "no geometry when it is omitted");
+      assert.ok(record.properties);
     }
-
-    assert.equal(offset, result.buffer.byteLength);
   });
 
   it("omits properties when fields is an empty array", async () => {
@@ -624,33 +618,22 @@ describe("GeospatialEngine Contiguous Binary WKB Packet Serialization", () => {
     };
 
     const result = await engine.queryExtent("lakes-bin-test", options);
-    const view = new DataView(result.buffer);
-    const flags = view.getUint16(6, true);
-    const count = view.getUint32(8, true);
-
+    const flags = new DataView(result.buffer).getUint16(6, true);
     assert.equal(
       flags & WKB_FLAG_HAS_PROPERTIES,
       0,
       "FLAG_HAS_PROPERTIES must be unset"
     );
-    assert.equal(count, 34);
-
-    let offset = 12;
-    for (let i = 0; i < count; i++) {
-      offset += 8; // fid
-      const wkbLen = view.getUint32(offset, true);
-      assert.ok(wkbLen > 0);
-      offset += 4 + wkbLen;
-      const propsLen = view.getUint32(offset, true);
+    const records = decodeFeaturePacket(result.buffer);
+    assert.equal(records.length, 34);
+    for (const record of records) {
+      assert.ok(record.wkb);
       assert.equal(
-        propsLen,
-        0,
-        "propsLength must be 0 when fields is empty array"
+        record.properties,
+        null,
+        "no properties when fields is an empty array"
       );
-      offset += 4;
     }
-
-    assert.equal(offset, result.buffer.byteLength);
   });
 
   it("projects only requested attribute keys when fields list is provided", async () => {
@@ -660,27 +643,14 @@ describe("GeospatialEngine Contiguous Binary WKB Packet Serialization", () => {
     };
 
     const result = await engine.queryExtent("lakes-bin-test", options);
-    const view = new DataView(result.buffer);
-    const count = view.getUint32(8, true);
     const decoder = new TextDecoder();
-
-    let offset = 12;
-    for (let i = 0; i < count; i++) {
-      offset += 8; // fid
-      const wkbLen = view.getUint32(offset, true);
-      offset += 4 + wkbLen;
-
-      const propsLen = view.getUint32(offset, true);
-      offset += 4;
-      const propsBytes = new Uint8Array(result.buffer, offset, propsLen);
-      const props = JSON.parse(decoder.decode(propsBytes));
-
+    for (const record of decodeFeaturePacket(result.buffer)) {
+      const props = JSON.parse(decoder.decode(record.properties!));
       assert.deepEqual(
         Object.keys(props),
         ["name"],
         "Properties must only contain requested field"
       );
-      offset += propsLen;
     }
   });
 });
@@ -1337,19 +1307,9 @@ describe("GeospatialEngine getLayerInfo and Dialect Classification (Ticket #71)"
         const view = new DataView(res.buffer);
         assert.equal(view.getUint32(0, true), WKB_PACKET_MAGIC);
 
-        // First feature starts at byte offset 12:
-        // fid (8 bytes, 12..20)
-        // wkbLen (4 bytes, 20..24)
-        const wkbLen = view.getUint32(20, true);
-        const propsOffset = 24 + wkbLen;
-        const propsLen = view.getUint32(propsOffset, true);
-        assert.ok(propsLen > 0);
-
-        const propsBuffer = new Uint8Array(
-          res.buffer,
-          propsOffset + 4,
-          propsLen
-        );
+        const [firstRecord] = decodeFeaturePacket(res.buffer);
+        const propsBuffer = firstRecord.properties!;
+        assert.ok(propsBuffer.byteLength > 0);
         const deserializedPacketProps = JSON.parse(
           new TextDecoder().decode(propsBuffer)
         );
@@ -1930,10 +1890,13 @@ describe("buildOrderBySql (Ticket #334)", () => {
 
   it("returns null for a missing or empty orderBy", () => {
     assert.equal(
-      buildOrderBySql("t", undefined, schema, "fid", "SQLITE"),
+      buildOrderBySql("t", undefined, schema, identityOf("GPKG", "fid")),
       null
     );
-    assert.equal(buildOrderBySql("t", [], schema, "fid", "SQLITE"), null);
+    assert.equal(
+      buildOrderBySql("t", [], schema, identityOf("GPKG", "fid")),
+      null
+    );
   });
 
   it("builds a quoted multi-column ORDER BY with the stored ID column tiebreaker", () => {
@@ -1945,23 +1908,32 @@ describe("buildOrderBySql (Ticket #334)", () => {
           ['na"me', "DESC"],
         ],
         schema,
-        "fid",
-        "SQLITE"
+        identityOf("GPKG", "fid")
       ),
-      'SELECT * FROM "my ""layer""" ORDER BY "category" ASC, "na""me" DESC, "fid" ASC'
+      'SELECT "fid" AS "__cartouche_fid", * FROM "my ""layer""" ORDER BY "category" ASC, "na""me" DESC, "fid" ASC'
     );
   });
 
   it("escapes identifiers for OGR SQL with backslashes instead of doubled quotes (Ticket #340)", () => {
     assert.equal(
-      buildOrderBySql('my "layer"', [['na"me', "DESC"]], schema, "", "OGRSQL"),
+      buildOrderBySql(
+        'my "layer"',
+        [['na"me', "DESC"]],
+        schema,
+        identityOf("ESRI Shapefile", "")
+      ),
       'SELECT * FROM "my \\"layer\\"" ORDER BY "na\\"me" DESC, FID ASC'
     );
   });
 
   it("uses OGR SQL FID as the tiebreaker when the layer has no stored ID column name", () => {
     assert.equal(
-      buildOrderBySql("t", [["priority", "DESC"]], schema, "", "OGRSQL"),
+      buildOrderBySql(
+        "t",
+        [["priority", "DESC"]],
+        schema,
+        identityOf("ESRI Shapefile", "")
+      ),
       'SELECT * FROM "t" ORDER BY "priority" DESC, FID ASC'
     );
   });
@@ -1975,25 +1947,41 @@ describe("buildOrderBySql (Ticket #334)", () => {
           ["fid", "DESC"],
         ],
         schema,
-        "fid",
-        "SQLITE"
+        identityOf("GPKG", "fid")
       ),
-      'SELECT * FROM "t" ORDER BY "category" ASC, "fid" DESC'
+      'SELECT "fid" AS "__cartouche_fid", * FROM "t" ORDER BY "category" ASC, "fid" DESC'
     );
   });
 
   it("rejects unknown, case-mismatched, and Virtual Field names with an error naming the field", () => {
     assert.throws(
-      () => buildOrderBySql("t", [["nope", "ASC"]], schema, "fid", "SQLITE"),
+      () =>
+        buildOrderBySql(
+          "t",
+          [["nope", "ASC"]],
+          schema,
+          identityOf("GPKG", "fid")
+        ),
       /"nope"/
     );
     assert.throws(
       () =>
-        buildOrderBySql("t", [["Category", "ASC"]], schema, "fid", "SQLITE"),
+        buildOrderBySql(
+          "t",
+          [["Category", "ASC"]],
+          schema,
+          identityOf("GPKG", "fid")
+        ),
       /"Category"/
     );
     assert.throws(
-      () => buildOrderBySql("t", [["FID", "ASC"]], schema, "", "OGRSQL"),
+      () =>
+        buildOrderBySql(
+          "t",
+          [["FID", "ASC"]],
+          schema,
+          identityOf("ESRI Shapefile", "")
+        ),
       /"FID"/
     );
   });
@@ -2009,8 +1997,7 @@ describe("buildOrderBySql (Ticket #334)", () => {
             ["category", "DESC"],
           ],
           schema,
-          "fid",
-          "SQLITE"
+          identityOf("GPKG", "fid")
         ),
       /repeated.*"category"/i
     );
@@ -2019,7 +2006,12 @@ describe("buildOrderBySql (Ticket #334)", () => {
   it("rejects a Sort Key without a valid direction with an error naming the field", () => {
     assert.throws(
       () =>
-        buildOrderBySql("t", fromAny([["category"]]), schema, "fid", "SQLITE"),
+        buildOrderBySql(
+          "t",
+          fromAny([["category"]]),
+          schema,
+          identityOf("GPKG", "fid")
+        ),
       /"category"/
     );
     assert.throws(
@@ -2028,29 +2020,43 @@ describe("buildOrderBySql (Ticket #334)", () => {
           "t",
           fromAny([["category", "asc"]]),
           schema,
-          "fid",
-          "SQLITE"
+          identityOf("GPKG", "fid")
         ),
       /"category"/
     );
     assert.throws(
       () =>
-        buildOrderBySql("t", fromAny(["category"]), schema, "fid", "SQLITE"),
+        buildOrderBySql(
+          "t",
+          fromAny(["category"]),
+          schema,
+          identityOf("GPKG", "fid")
+        ),
       /Sort Key/
     );
   });
 
   it("keeps the OGR SQL FID tiebreaker when a Sort Key names an attribute field called FID and the layer has no stored ID column", () => {
     assert.equal(
-      buildOrderBySql("t", [["FID", "DESC"]], ["FID", "name"], "", "OGRSQL"),
+      buildOrderBySql(
+        "t",
+        [["FID", "DESC"]],
+        ["FID", "name"],
+        identityOf("ESRI Shapefile", "")
+      ),
       'SELECT * FROM "t" ORDER BY "FID" DESC, FID ASC'
     );
   });
 
   it("skips the tiebreaker only for the stored ID column, not for an attribute field that shares its name in another case", () => {
     assert.equal(
-      buildOrderBySql("t", [["FID", "DESC"]], ["FID", "name"], "fid", "SQLITE"),
-      'SELECT * FROM "t" ORDER BY "FID" DESC, "fid" ASC'
+      buildOrderBySql(
+        "t",
+        [["FID", "DESC"]],
+        ["FID", "name"],
+        identityOf("GPKG", "fid")
+      ),
+      'SELECT "fid" AS "__cartouche_fid", * FROM "t" ORDER BY "FID" DESC, "fid" ASC'
     );
   });
 });
@@ -2083,18 +2089,20 @@ describe("Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)", ()
   });
 
   /**
-   * @description Format cases: how to open each fixture, its first feature ID, and the SQL tiebreaker the worker must append.
-   * @type {Array<{ name: string; firstFid: number; tiebreaker: string; open: (layerId: string) => Promise<void> }>}
+   * @description Format cases: how to open each fixture, its first feature ID, the select list (with the FID alias column on SQLite dialects, Ticket #387) and the SQL tiebreaker the worker must append.
+   * @type {Array<{ name: string; firstFid: number; select: string; tiebreaker: string; open: (layerId: string) => Promise<void> }>}
    */
   const formats: Array<{
     name: string;
     firstFid: number;
+    select: string;
     tiebreaker: string;
     open: (layerId: string) => Promise<void>;
   }> = [
     {
       name: "GeoPackage",
       firstFid: 1,
+      select: '"fid" AS "__cartouche_fid", *',
       tiebreaker: ', "fid" ASC',
       open: async (layerId) => {
         const filePath = path.join(tempDir, "sort_keys.gpkg");
@@ -2105,6 +2113,7 @@ describe("Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)", ()
     {
       name: "Shapefile",
       firstFid: 0,
+      select: "*",
       tiebreaker: ", FID ASC",
       open: async (layerId) => {
         const filePath = path.join(tempDir, "sort_keys.shp");
@@ -2115,6 +2124,7 @@ describe("Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)", ()
     {
       name: "Memory",
       firstFid: 0,
+      select: "*",
       tiebreaker: ", FID ASC",
       open: async (layerId) => {
         const dataset = createSortKeyFixture("Memory", "sort_keys");
@@ -2194,7 +2204,7 @@ describe("Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)", ()
           ids(CATEGORY_ASC)
         );
         assert.deepEqual(statements, [
-          `SELECT * FROM "sort_keys" ORDER BY "category" ASC${format.tiebreaker}`,
+          `SELECT ${format.select} FROM "sort_keys" ORDER BY "category" ASC${format.tiebreaker}`,
         ]);
       });
 
@@ -2264,7 +2274,7 @@ describe("Multi-column orderBy Sort Keys on real GDAL formats (Ticket #334)", ()
       [6, 5, 4, 3, 2, 1]
     );
     assert.deepEqual(statements, [
-      'SELECT * FROM "sort_keys" ORDER BY "fid" DESC',
+      'SELECT "fid" AS "__cartouche_fid", * FROM "sort_keys" ORDER BY "fid" DESC',
     ]);
   });
 
@@ -2346,12 +2356,26 @@ describe("buildPagedSelectSql and supportsSqlWindow (Ticket #339)", () => {
 
   it("orders by the Persistent FID column and appends LIMIT/OFFSET when no Sort Keys are given", () => {
     assert.equal(
-      buildPagedSelectSql("sort_keys", undefined, schema, "fid", 20, 10),
-      'SELECT * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 10 OFFSET 20'
+      buildPagedSelectSql(
+        "sort_keys",
+        undefined,
+        schema,
+        identityOf("GPKG", "fid"),
+        20,
+        10
+      ),
+      'SELECT "fid" AS "__cartouche_fid", * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 10 OFFSET 20'
     );
     assert.equal(
-      buildPagedSelectSql("sort_keys", [], schema, "fid", 0, 5),
-      'SELECT * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 5 OFFSET 0'
+      buildPagedSelectSql(
+        "sort_keys",
+        [],
+        schema,
+        identityOf("GPKG", "fid"),
+        0,
+        5
+      ),
+      'SELECT "fid" AS "__cartouche_fid", * FROM "sort_keys" ORDER BY "fid" ASC LIMIT 5 OFFSET 0'
     );
   });
 
@@ -2361,63 +2385,140 @@ describe("buildPagedSelectSql and supportsSqlWindow (Ticket #339)", () => {
         "sort_keys",
         [["category", "ASC"]],
         schema,
-        "fid",
+        identityOf("GPKG", "fid"),
         4,
         2
       ),
-      'SELECT * FROM "sort_keys" ORDER BY "category" ASC, "fid" ASC LIMIT 2 OFFSET 4'
+      'SELECT "fid" AS "__cartouche_fid", * FROM "sort_keys" ORDER BY "category" ASC, "fid" ASC LIMIT 2 OFFSET 4'
     );
   });
 
   it("uses LIMIT -1 (no limit) when only start is given, and LIMIT 0 for an empty window", () => {
     assert.equal(
-      buildPagedSelectSql("t", undefined, schema, "fid", 7, undefined),
-      'SELECT * FROM "t" ORDER BY "fid" ASC LIMIT -1 OFFSET 7'
+      buildPagedSelectSql(
+        "t",
+        undefined,
+        schema,
+        identityOf("GPKG", "fid"),
+        7,
+        undefined
+      ),
+      'SELECT "fid" AS "__cartouche_fid", * FROM "t" ORDER BY "fid" ASC LIMIT -1 OFFSET 7'
     );
     assert.equal(
-      buildPagedSelectSql("t", undefined, schema, "fid", 0, 0),
-      'SELECT * FROM "t" ORDER BY "fid" ASC LIMIT 0 OFFSET 0'
+      buildPagedSelectSql(
+        "t",
+        undefined,
+        schema,
+        identityOf("GPKG", "fid"),
+        0,
+        0
+      ),
+      'SELECT "fid" AS "__cartouche_fid", * FROM "t" ORDER BY "fid" ASC LIMIT 0 OFFSET 0'
     );
   });
 
   it("rejects a layer without a Persistent FID and non-integer or negative window bounds", () => {
     assert.throws(
-      () => buildPagedSelectSql("t", undefined, schema, "", 0, 5),
+      () =>
+        buildPagedSelectSql(
+          "t",
+          undefined,
+          schema,
+          identityOf("ESRI Shapefile", ""),
+          0,
+          5
+        ),
       /Persistent FID/
     );
     assert.throws(
-      () => buildPagedSelectSql("t", undefined, schema, "fid", -1, 5),
+      () =>
+        buildPagedSelectSql(
+          "t",
+          undefined,
+          schema,
+          identityOf("GPKG", "fid"),
+          -1,
+          5
+        ),
       /start/
     );
     assert.throws(
-      () => buildPagedSelectSql("t", undefined, schema, "fid", 1.5, 5),
+      () =>
+        buildPagedSelectSql(
+          "t",
+          undefined,
+          schema,
+          identityOf("GPKG", "fid"),
+          1.5,
+          5
+        ),
       /start/
     );
     assert.throws(
-      () => buildPagedSelectSql("t", undefined, schema, "fid", 0, -2),
+      () =>
+        buildPagedSelectSql(
+          "t",
+          undefined,
+          schema,
+          identityOf("GPKG", "fid"),
+          0,
+          -2
+        ),
       /max/
     );
   });
 
   it("validates Sort Keys exactly like buildOrderBySql", () => {
     assert.throws(
-      () => buildPagedSelectSql("t", [["missing", "ASC"]], schema, "fid", 0, 5),
+      () =>
+        buildPagedSelectSql(
+          "t",
+          [["missing", "ASC"]],
+          schema,
+          identityOf("GPKG", "fid"),
+          0,
+          5
+        ),
       /"missing"/
     );
   });
 
   it("only allows SQLite-dialect drivers with a Persistent FID", () => {
-    assert.equal(supportsSqlWindow("GPKG", "fid", false), true);
-    assert.equal(supportsSqlWindow("SQLite", "ogc_fid", false), true);
-    assert.equal(supportsSqlWindow("GPKG", "", false), false);
-    assert.equal(supportsSqlWindow("ESRI Shapefile", "", false), false);
-    assert.equal(supportsSqlWindow("PostgreSQL", "ogc_fid", false), false);
-    assert.equal(supportsSqlWindow(undefined, "fid", false), false);
+    assert.equal(supportsSqlWindow(identityOf("GPKG", "fid"), false), true);
+    assert.equal(
+      supportsSqlWindow(identityOf("SQLite", "ogc_fid"), false),
+      true
+    );
+    assert.equal(supportsSqlWindow(identityOf("GPKG", ""), false), false);
+    assert.equal(
+      supportsSqlWindow(identityOf("ESRI Shapefile", ""), false),
+      false
+    );
+    assert.equal(
+      supportsSqlWindow(identityOf("PostgreSQL", "ogc_fid"), false),
+      false
+    );
+    assert.equal(
+      supportsSqlWindow(
+        resolveFeatureIdentity({
+          driverName: undefined,
+          layerName: "t",
+          fidColumn: "fid",
+          fieldNames: [],
+        }),
+        false
+      ),
+      false
+    );
   });
 
   it("allows a spatial filter only for GeoPackage, whose driver filters before the window", () => {
-    assert.equal(supportsSqlWindow("GPKG", "fid", true), true);
-    assert.equal(supportsSqlWindow("SQLite", "ogc_fid", true), false);
+    assert.equal(supportsSqlWindow(identityOf("GPKG", "fid"), true), true);
+    assert.equal(
+      supportsSqlWindow(identityOf("SQLite", "ogc_fid"), true),
+      false
+    );
   });
 });
 
@@ -2488,11 +2589,11 @@ describe("GeoPackage paging pushed into SQL LIMIT/OFFSET (Ticket #339)", () => {
     }
 
     assert.deepEqual(statements, [
-      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 10 OFFSET 0',
-      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 25 OFFSET 120',
-      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 10 OFFSET 245',
-      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 3 OFFSET 0',
-      'SELECT * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT -1 OFFSET 250',
+      'SELECT "fid" AS "__cartouche_fid", * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 10 OFFSET 0',
+      'SELECT "fid" AS "__cartouche_fid", * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 25 OFFSET 120',
+      'SELECT "fid" AS "__cartouche_fid", * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 10 OFFSET 245',
+      'SELECT "fid" AS "__cartouche_fid", * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT 3 OFFSET 0',
+      'SELECT "fid" AS "__cartouche_fid", * FROM "timeline_level_0" ORDER BY "fid" ASC LIMIT -1 OFFSET 250',
     ]);
   });
 
@@ -2737,6 +2838,185 @@ describe("Extent-filtered paging on SQLite-dialect layers without an R-tree (Tic
       }
     });
   }
+});
+
+/**
+ * @description File formats of the Feature ID matrix: each is a copy of the timeline GeoPackage made with `ogr2ogr` options, read through its own driver. Adding
+ * a source format to Cartouche means adding its row here.
+ * @type {Array<{ name: string; file: string; options: string[] }>}
+ */
+const FEATURE_ID_FORMATS: Array<{
+  name: string;
+  file: string;
+  options: string[];
+}> = [
+  { name: "GeoPackage", file: "copy.gpkg", options: ["-f", "GPKG"] },
+  { name: "plain SQLite", file: "copy.sqlite", options: ["-f", "SQLite"] },
+  {
+    name: "Shapefile",
+    file: "copy.shp",
+    options: ["-f", "ESRI Shapefile", "-lco", "ENCODING=UTF-8"],
+  },
+  { name: "GeoJSON", file: "copy.geojson", options: ["-f", "GeoJSON"] },
+  {
+    name: "FlatGeobuf",
+    file: "copy.fgb",
+    options: ["-f", "FlatGeobuf", "-nlt", "PROMOTE_TO_MULTI"],
+  },
+  {
+    name: "CSV",
+    file: "copy.csv",
+    options: [
+      "-f",
+      "CSV",
+      "-lco",
+      "GEOMETRY=AS_WKT",
+      "-lco",
+      "GEOMETRY_NAME=WKT",
+    ],
+  },
+];
+
+describe("Feature IDs agree on every read path, for every format (Ticket #387)", () => {
+  let engine: GeospatialEngine;
+  let tempDir: string;
+  const orderBy: SortKey[] = [["start_date", "ASC"]];
+  /** Left half of the timeline layer's extent. */
+  const westExtent: BoundingBox = [-179.11901, -43.65057, 0.44, 83.11652];
+
+  beforeEach(() => {
+    engine = new GeospatialEngine();
+    engine.setBackgroundScanEnabled(false);
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cartouche-feature-id-"));
+  });
+
+  afterEach(() => {
+    engine.closeAll();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  /**
+   * @function openCopy
+   * @description Writes the timeline GeoPackage in a format and opens the copy as a layer.
+   * @param {(typeof FEATURE_ID_FORMATS)[number]} format - Format row.
+   * @returns {Promise<string>} The layer ID.
+   */
+  const openCopy = async (
+    format: (typeof FEATURE_ID_FORMATS)[number]
+  ): Promise<string> => {
+    const filePath = path.join(tempDir, format.file);
+    const source = gdal.open(timelineGpkgPath);
+    gdal.vectorTranslate(filePath, source, format.options).close();
+    source.close();
+    await engine.openDataset(format.name, filePath);
+    return format.name;
+  };
+
+  /**
+   * @function checkResult
+   * @description Asserts that a query result's packet and feature list carry the same Feature IDs, and that every feature has the properties a direct read
+   * gives the feature with that ID.
+   * @param {Awaited<ReturnType<GeospatialEngine["queryExtent"]>>} result - Query result.
+   * @param {Map<string, Record<string, unknown>>} direct - Direct-read properties by stringified Feature ID.
+   * @param {string} label - Read path, for messages.
+   */
+  const checkResult = (
+    result: Awaited<ReturnType<GeospatialEngine["queryExtent"]>>,
+    direct: Map<string, Record<string, unknown>>,
+    label: string
+  ): void => {
+    assert.ok(result.features.length > 0, `${label}: no features`);
+    assert.deepEqual(
+      decodeFeaturePacket(result.buffer).map((r) => r.id),
+      result.features.map((f) => f.id),
+      `${label}: the packet (map) and the feature list (table) disagree`
+    );
+    for (const feature of result.features) {
+      assert.deepEqual(
+        feature.properties,
+        direct.get(String(feature.id)),
+        `${label}: Feature ID ${String(feature.id)} has another feature's properties`
+      );
+    }
+  };
+
+  for (const format of FEATURE_ID_FORMATS) {
+    it(`${format.name}: direct, extent-filtered, paged, sorted and featureIds reads give each feature the same Feature ID`, async () => {
+      const layerId = await openCopy(format);
+      const all = await engine.queryExtent(layerId, { includeGeometry: false });
+      assert.equal(all.features.length, 252);
+      const direct = new Map(
+        all.features.map((f) => [String(f.id), f.properties ?? {}])
+      );
+      assert.equal(direct.size, 252, "Feature IDs are unique");
+      const directIds = all.features.map((f) => f.id);
+
+      const unsortedPage = await engine.queryExtent(layerId, {
+        start: 5,
+        max: 7,
+        includeGeometry: false,
+      });
+      checkResult(unsortedPage, direct, "unsorted page");
+      assert.deepEqual(
+        unsortedPage.features.map((f) => f.id),
+        directIds.slice(5, 12)
+      );
+
+      const reads: Array<[string, QueryExtentOptions]> = [
+        ["extent-filtered", { extent: westExtent }],
+        ["extent-filtered page", { extent: westExtent, start: 3, max: 9 }],
+        ["sorted", { orderBy }],
+        ["sorted page", { orderBy, start: 3, max: 10 }],
+        [
+          "sorted, extent-filtered page",
+          { orderBy, extent: westExtent, start: 2, max: 8 },
+        ],
+        ["sorted featureIds", { orderBy, featureIds: directIds.slice(0, 4) }],
+      ];
+      for (const [label, options] of reads) {
+        checkResult(
+          await engine.queryExtent(layerId, {
+            ...options,
+            includeGeometry: false,
+          }),
+          direct,
+          label
+        );
+      }
+    });
+  }
+
+  it("plain SQLite: SQL-paged and sorted reads run in SQL", async () => {
+    const layerId = await openCopy(FEATURE_ID_FORMATS[1]);
+    const statements = recordSessionSql(engine, layerId);
+    await engine.queryExtent(layerId, { start: 5, max: 7 });
+    await engine.queryExtent(layerId, { orderBy });
+    await engine.queryExtent(layerId, { orderBy, featureIds: [1, 2, 3] });
+    assert.equal(statements.length, 3);
+  });
+
+  it("a staged new feature keeps its string Feature ID in the packet and the feature list (Ticket #388)", async () => {
+    const layerId = await openCopy(FEATURE_ID_FORMATS[0]);
+    const point = new gdal.Point(-75.7, 45.4).toWKB();
+    for (const id of ["feature-a", "feature-b"]) {
+      engine.stageFeatureEdit(layerId, {
+        id,
+        isNew: true,
+        wkb: new Uint8Array(point.buffer, point.byteOffset, point.byteLength),
+        properties: { names: id },
+      });
+    }
+    const result = await engine.queryExtent(layerId, {
+      start: 250,
+      fields: [],
+    });
+    const packetIds = decodeFeaturePacket(result.buffer).map((r) => r.id);
+    assert.deepEqual(packetIds.slice(-2), ["feature-a", "feature-b"]);
+    assert.deepEqual(
+      packetIds,
+      result.features.map((f) => f.id)
+    );
+  });
 });
 
 describe("Layer and field names containing quotes (Ticket #340)", () => {

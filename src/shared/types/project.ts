@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, styles, and feature query options including multi-column Sort Keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 
@@ -641,18 +641,31 @@ export interface LayerDescriptor extends ProjectLayerItem {
 }
 
 /**
+ * @typedef {number | string} FeatureId
+ * @description A feature's Feature ID: the identifier the Geospatial Worker gives a feature on every read path (direct reads, extent-filtered reads, SQL-sorted
+ * and SQL-paged reads) for as long as its layer is open, so the map, the Attribute Table and staged edits all name the same feature with the same value. A number
+ * when the source's identifier is an integer within `Number.MAX_SAFE_INTEGER` (a GDAL FID or an integer Persistent FID), otherwise a string (a text or UUID
+ * Primary Key, or the ID of a staged new feature). The same feature always has the same type, and a string Feature ID is never the decimal text of an integer one, because the worker matches staged edits and `featureIds` filters by the ID's text.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+export type FeatureId = number | string;
+
+/**
  * @typedef {Object} QueryExtentFeature
- * @property {number | string} id - Unique feature identifier.
+ * @property {FeatureId} id - The feature's Feature ID.
  * @property {Record<string, unknown>} [geojson] - GeoJSON geometry object representation.
  * @property {Uint8Array} [wkb] - Optional raw OGC Well-Known Binary geometry buffer.
  * @property {Record<string, unknown>} [properties] - Tabular attribute properties.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-10-15
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 export interface QueryExtentFeature {
-  id: number | string;
+  id: FeatureId;
   geojson?: Record<string, unknown>;
   wkb?: Uint8Array;
   properties?: Record<string, unknown>;
@@ -721,14 +734,15 @@ export interface QueryExtentResult {
 export const WKB_PACKET_MAGIC = 0x43415254;
 
 /**
- * Binary WKB feature packet protocol specification version number.
+ * Binary WKB feature packet protocol specification version number. Version 2 (Ticket #387) prefixes each record's Feature ID with a kind byte so string Feature
+ * IDs can be carried; see `shared/layers/featurePacket`.
  * @constant {number}
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-10-16
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
-export const WKB_PACKET_VERSION = 1;
+export const WKB_PACKET_VERSION = 2;
 
 /**
  * Bitmask flag indicating that the binary feature packet contains geometry payloads.

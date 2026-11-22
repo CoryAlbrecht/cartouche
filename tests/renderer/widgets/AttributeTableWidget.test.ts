@@ -4,7 +4,7 @@
  * @description Unit and component tests verifying AttributeTableWidget header toolbars, scaling, grabber suppression, and reactive synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link AttributeTableWidget}
  */
@@ -1548,12 +1548,8 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
   });
 
   it("deserializes binary CART WKB packet buffer returned by queryExtent", async () => {
-    const {
-      WKB_PACKET_MAGIC,
-      WKB_PACKET_VERSION,
-      WKB_FLAG_HAS_GEOMETRY,
-      WKB_FLAG_HAS_PROPERTIES,
-    } = await import("../../../src/shared/types/project");
+    const { encodeFeaturePacket } =
+      await import("../../../src/shared/layers/featurePacket");
 
     const pointWkb = new Uint8Array(21);
     const wkbView = new DataView(pointWkb.buffer);
@@ -1562,28 +1558,15 @@ describe("AttributeTableWidget Chunk Hydration, Schema Columns, and Pagination (
     wkbView.setFloat64(5, -75.69, true);
     wkbView.setFloat64(13, 45.42, true);
 
-    const propsBytes = new TextEncoder().encode(
-      JSON.stringify({ city_name: "Ottawa" })
-    );
-    const totalSize =
-      12 + 8 + 4 + pointWkb.byteLength + 4 + propsBytes.byteLength;
-    const binaryPacket = new ArrayBuffer(totalSize);
-    const view = new DataView(binaryPacket);
-    const uint8View = new Uint8Array(binaryPacket);
-    view.setUint32(0, WKB_PACKET_MAGIC, true);
-    view.setUint16(4, WKB_PACKET_VERSION, true);
-    view.setUint16(6, WKB_FLAG_HAS_GEOMETRY | WKB_FLAG_HAS_PROPERTIES, true);
-    view.setUint32(8, 1, true);
-    let offset = 12;
-    view.setBigInt64(offset, 77n, true);
-    offset += 8;
-    view.setUint32(offset, pointWkb.byteLength, true);
-    offset += 4;
-    uint8View.set(pointWkb, offset);
-    offset += pointWkb.byteLength;
-    view.setUint32(offset, propsBytes.byteLength, true);
-    offset += 4;
-    uint8View.set(propsBytes, offset);
+    const binaryPacket = encodeFeaturePacket([
+      {
+        id: 77,
+        wkb: pointWkb,
+        properties: new TextEncoder().encode(
+          JSON.stringify({ city_name: "Ottawa" })
+        ),
+      },
+    ]);
 
     (globalThis as any).window.electronAPI = {
       ...(globalThis as any).window.electronAPI,

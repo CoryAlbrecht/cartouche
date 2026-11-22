@@ -4,7 +4,7 @@
  * @description Unit tests verifying shared binary WKB packet protocol constants, query extent options, and result interfaces.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-16
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link WKB_PACKET_MAGIC}
  */
@@ -24,7 +24,7 @@ import {
 describe("Shared WKB Feature Packet Protocol Constants & Contracts", () => {
   it("exports correct protocol constants matching ADR 0004 specification", () => {
     assert.equal(WKB_PACKET_MAGIC, 0x43415254);
-    assert.equal(WKB_PACKET_VERSION, 1);
+    assert.equal(WKB_PACKET_VERSION, 2);
     assert.equal(WKB_FLAG_HAS_GEOMETRY, 0x01);
     assert.equal(WKB_FLAG_HAS_PROPERTIES, 0x02);
   });

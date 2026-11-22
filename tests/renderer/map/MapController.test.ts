@@ -4,7 +4,7 @@
  * @description Unit and integration tests for MapController isolated OpenLayers lifecycle, vector layer instantiation, WKB streaming loader, feature deduplication, viewport auto-fitting, and keeping features the Time Filter hides out of the selection (Ticket #386).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-21
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link MapController}
  */
@@ -62,6 +62,7 @@ import {
 } from "../../../src/renderer/state/crsAlertSignals";
 import { vertexKey } from "../../../src/renderer/map/vertexSelection";
 import { WKB_PACKET_MAGIC } from "../../../src/shared/types";
+import { encodeFeaturePacket } from "../../../src/shared/layers/featurePacket";
 import type { LayerDescriptor } from "../../../src/shared/types";
 
 // Setup headless mock browser/DOM environment for OpenLayers
@@ -162,61 +163,30 @@ const pointWkb2 = new Uint8Array(
 );
 
 /**
- * @description Helper utility constructing a contiguous binary WKB packet conforming to ADR 0004 for test mocks.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-10-16
- * @updated 2026-10-16
- * @since 0.1.0-dev
- * @param {Array<{ fid: number | bigint; wkb?: Uint8Array; properties?: Record<string, any> }>} features - Feature records to serialize.
+ * @function createMockBinaryPacket
+ * @description Builds a WKB Feature Packet for test mocks with the production encoder, optionally overwriting the header magic number.
+ * @param {Array<{ fid: number | string; wkb?: Uint8Array; properties?: Record<string, any> }>} features - Feature records; `fid` is the Feature ID.
  * @param {number} [magic=WKB_PACKET_MAGIC] - Header magic number.
- * @returns {ArrayBuffer} Contiguous binary packet buffer.
+ * @returns {ArrayBuffer} The packet.
  */
 function createMockBinaryPacket(
   features: Array<{
-    fid: number | bigint;
+    fid: number | string;
     wkb?: Uint8Array;
     properties?: Record<string, any>;
   }>,
   magic: number = WKB_PACKET_MAGIC
 ): ArrayBuffer {
   const encoder = new TextEncoder();
-  let totalSize = 12;
-  const records = features.map((f) => {
-    const fid = BigInt(f.fid);
-    const wkbBytes = f.wkb || null;
-    const wkbLen = wkbBytes ? wkbBytes.byteLength : 0;
-    const propsBytes =
-      f.properties ? encoder.encode(JSON.stringify(f.properties)) : null;
-    const propsLen = propsBytes ? propsBytes.byteLength : 0;
-    totalSize += 8 + 4 + wkbLen + 4 + propsLen;
-    return { fid, wkbBytes, wkbLen, propsBytes, propsLen };
-  });
-
-  const buffer = new ArrayBuffer(totalSize);
-  const view = new DataView(buffer);
-  view.setUint32(0, magic, true);
-  view.setUint16(4, 1, true);
-  view.setUint16(6, 0x03, true);
-  view.setUint32(8, features.length, true);
-
-  let offset = 12;
-  for (const r of records) {
-    view.setBigInt64(offset, r.fid, true);
-    offset += 8;
-    view.setUint32(offset, r.wkbLen, true);
-    offset += 4;
-    if (r.wkbBytes && r.wkbLen > 0) {
-      new Uint8Array(buffer, offset, r.wkbLen).set(r.wkbBytes);
-      offset += r.wkbLen;
-    }
-    view.setUint32(offset, r.propsLen, true);
-    offset += 4;
-    if (r.propsBytes && r.propsLen > 0) {
-      new Uint8Array(buffer, offset, r.propsLen).set(r.propsBytes);
-      offset += r.propsLen;
-    }
-  }
-
+  const buffer = encodeFeaturePacket(
+    features.map((f) => ({
+      id: f.fid,
+      wkb: f.wkb ?? null,
+      properties:
+        f.properties ? encoder.encode(JSON.stringify(f.properties)) : null,
+    }))
+  );
+  new DataView(buffer).setUint32(0, magic, true);
   return buffer;
 }
 

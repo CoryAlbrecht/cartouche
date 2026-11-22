@@ -4,7 +4,7 @@
  * @description Dockview widget component displaying tabular feature properties and attribute records with embedded selection and digitizing toolbars. The records are shown through an embedded TableWidget (Spec #322 / Ticket #329) whose column definitions carry the attribute table's type-specific display and editors. Clicking a sortable column header sorts all of the layer's features through the Geospatial Worker's `orderBy` Sort Keys (Ticket #330).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TableWidget}
@@ -35,7 +35,11 @@ import { logging } from "@shared/logging";
 import { prefsAttributeTableMaxRows } from "@renderer/state/preferencesSignals";
 import { activeLocaleSignal } from "@renderer/state/i18nSignals";
 import {
-  WKB_PACKET_MAGIC,
+  decodeFeaturePacket,
+  featurePacketOf,
+  type FeaturePacketRecord,
+} from "@shared/layers/featurePacket";
+import {
   type BoundingBox,
   type GeometryKind,
   type GisFeature,
@@ -207,10 +211,10 @@ export type AttributeTablePanelProps = AttributeTableWidgetProps;
  * Deserializes a `queryExtent` result (either structured `features` array or binary `CART` WKB packet buffer)
  * into `GisFeature` records with full properties and coordinates.
  * @function deserializeQueryExtentFeatures
- * @description Extracts GIS feature records from a Geospatial Worker queryExtent response.
+ * @description Extracts GIS feature records from a Geospatial Worker queryExtent response. The packet is read with {@link decodeFeaturePacket}, so each record keeps its Feature ID, string or number; a buffer that is not a valid packet yields no records.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-06
- * @updated 2026-11-07
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier.
  * @param {GeometryKind} fallbackGeometryKind - Fallback layer geometry kind.
@@ -273,81 +277,44 @@ export function deserializeQueryExtentFeatures(
     });
   }
 
-  let buffer: ArrayBuffer | null = null;
-  if ("buffer" in result && result.buffer) {
-    if (result.buffer instanceof ArrayBuffer) {
-      buffer = result.buffer;
-    } else if (
-      typeof ArrayBuffer !== "undefined"
-      && ArrayBuffer.isView(result.buffer)
-    ) {
-      const view = result.buffer as ArrayBufferView;
-      const copy = new Uint8Array(view.byteLength);
-      copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
-      buffer = copy.buffer;
+  const packet = featurePacketOf(result);
+
+  if (packet) {
+    let records: FeaturePacketRecord[];
+    try {
+      records = decodeFeaturePacket(packet);
+    } catch {
+      return [];
     }
-  }
-
-  if (buffer && buffer.byteLength >= 12) {
-    const view = new DataView(buffer);
-    const magic = view.getUint32(0, true);
-    if (magic === WKB_PACKET_MAGIC) {
-      const featureCount = view.getUint32(8, true);
-      let offset = 12;
-      const decoder = new TextDecoder();
-      const extracted: GisFeature[] = [];
-
-      for (let i = 0; i < featureCount; i++) {
-        if (offset + 12 > buffer.byteLength) break;
-        const fid = Number(view.getBigInt64(offset, true));
-        offset += 8;
-
-        const wkbLen = view.getUint32(offset, true);
-        offset += 4;
-
-        let geometryType: GeometryKind = fallbackGeometryKind || "Unknown";
-        let coordinates: unknown = null;
-        if (wkbLen > 0 && offset + wkbLen <= buffer.byteLength) {
-          const wkbSlice = new Uint8Array(buffer, offset, wkbLen);
-          offset += wkbLen;
-          try {
-            const geom = wkbFormat.readGeometry(wkbSlice);
-            if (geom) {
-              geometryType = (geom.getType?.()
-                || fallbackGeometryKind
-                || "Unknown") as GeometryKind;
-              coordinates = (geom as any).getCoordinates?.() ?? null;
-            }
-          } catch {
-            // Keep fallback geometry kind
+    const decoder = new TextDecoder();
+    return records.map((record) => {
+      let geometryType: GeometryKind = fallbackGeometryKind || "Unknown";
+      let coordinates: unknown = null;
+      if (record.wkb) {
+        try {
+          const geom = wkbFormat.readGeometry(record.wkb);
+          if (geom) {
+            geometryType = (geom.getType?.()
+              || fallbackGeometryKind
+              || "Unknown") as GeometryKind;
+            coordinates = (geom as any).getCoordinates?.() ?? null;
           }
+        } catch {
+          // Keep fallback geometry kind
         }
-
-        if (offset + 4 > buffer.byteLength) break;
-        const propsLen = view.getUint32(offset, true);
-        offset += 4;
-
-        let properties: Record<string, any> = {};
-        if (propsLen > 0 && offset + propsLen <= buffer.byteLength) {
-          try {
-            const propsSlice = new Uint8Array(buffer, offset, propsLen);
-            properties = JSON.parse(decoder.decode(propsSlice));
-          } catch {
-            properties = {};
-          }
-          offset += propsLen;
-        }
-
-        extracted.push({
-          id: fid,
-          layerId,
-          geometryType,
-          properties,
-          coordinates,
-        });
       }
-      return extracted;
-    }
+
+      let properties: Record<string, any> = {};
+      if (record.properties) {
+        try {
+          properties = JSON.parse(decoder.decode(record.properties));
+        } catch {
+          properties = {};
+        }
+      }
+
+      return { id: record.id, layerId, geometryType, properties, coordinates };
+    });
   }
 
   return [];

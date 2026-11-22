@@ -4,7 +4,7 @@
  * @description Calendar-aware UTC temporal mathematics, discrete and micro-decimal stepping with leap-year and month clamping, and auto-range feature aggregation.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
@@ -29,6 +29,10 @@ import { projectLayersSignal } from "../state/projectSignals";
 import { featuresSignal } from "../state/gisSignals";
 import { parseTemporalValue } from "./temporalPredicate";
 import { logging } from "../../shared/logging";
+import {
+  decodeFeaturePacket,
+  featurePacketOf,
+} from "../../shared/layers/featurePacket";
 
 /**
  * Minimum allowable positive decimal stepping value, ensuring a 1-second increment under 'Years' unit.
@@ -439,10 +443,10 @@ export function calculateActiveTemporalRange(
  * Extracts raw attribute properties from the first feature record in a queryExtent response
  * (supporting structured `features` array and contiguous binary WKB packet buffer).
  * @function extractFirstFeatureProperties
- * @description Decodes properties from the first feature in queryExtent result.
+ * @description Decodes properties from the first feature in queryExtent result, reading a packet with {@link decodeFeaturePacket}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {any} result - Response returned from queryExtent.
  * @returns {Record<string, unknown> | null} Properties dictionary of first feature, or null if empty.
@@ -458,42 +462,15 @@ export function extractFirstFeatureProperties(
     return result.features[0].properties ?? null;
   }
 
-  let buffer: ArrayBuffer | null = null;
-  if (result.buffer instanceof ArrayBuffer) {
-    buffer = result.buffer;
-  } else if (
-    typeof ArrayBuffer !== "undefined"
-    && ArrayBuffer.isView(result.buffer)
-  ) {
-    const view = result.buffer as ArrayBufferView;
-    const copy = new Uint8Array(view.byteLength);
-    copy.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
-    buffer = copy.buffer;
-  }
-
-  if (buffer && buffer.byteLength >= 12) {
-    const view = new DataView(buffer);
-    const magic = view.getUint32(0, true);
-    if (magic === 0x43415254) {
-      const featureCount = view.getUint32(8, true);
-      if (featureCount > 0 && buffer.byteLength >= 24) {
-        const wkbLen = view.getUint32(20, true);
-        const propsOffset = 24 + wkbLen;
-        if (propsOffset + 4 <= buffer.byteLength) {
-          const propsLen = view.getUint32(propsOffset, true);
-          if (propsLen > 0 && propsOffset + 4 + propsLen <= buffer.byteLength) {
-            try {
-              const decoder = new TextDecoder();
-              const jsonStr = decoder.decode(
-                new Uint8Array(buffer, propsOffset + 4, propsLen)
-              );
-              return JSON.parse(jsonStr);
-            } catch {
-              return null;
-            }
-          }
-        }
+  const packet = featurePacketOf(result);
+  if (packet) {
+    try {
+      const first = decodeFeaturePacket(packet)[0];
+      if (first?.properties) {
+        return JSON.parse(new TextDecoder().decode(first.properties));
       }
+    } catch {
+      return null;
     }
   }
 

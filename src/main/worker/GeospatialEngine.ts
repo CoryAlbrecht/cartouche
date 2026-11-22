@@ -4,7 +4,7 @@
  * @description Decoupled geospatial engine wrapping native gdal-async operations, managing active dataset handles, extracting layer metadata, calculating spatial extent slices, and generating binary OGC WKB buffers, including multi-column Sort Key ordering.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-15
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link GeospatialLayerMetadata}
  * @see {@link QueryExtentFeature}
@@ -34,15 +34,19 @@ import {
   quoteSqlIdentifier,
   quoteSqlString,
   sqlDialectForDriver,
+  sqlWindowClause,
   type SqlDialect,
 } from "../gdal/sqlQuote";
 import { selectRows, type SqliteRow } from "../gdal/readOnlySqlite";
+import type { FeatureId } from "../../shared/types";
 import {
-  WKB_PACKET_MAGIC,
-  WKB_PACKET_VERSION,
-  WKB_FLAG_HAS_GEOMETRY,
-  WKB_FLAG_HAS_PROPERTIES,
-} from "../../shared/types";
+  encodeFeaturePacket,
+  type FeaturePacketRecord,
+} from "../../shared/layers/featurePacket";
+import {
+  resolveFeatureIdentity,
+  type FeatureIdentity,
+} from "./featureIdentity";
 import type {
   GeospatialLayerMetadata,
   RehydrateLayerSpec,
@@ -617,26 +621,25 @@ interface BackgroundScanState {
 }
 
 /**
- * @description Validates an ordered list of Sort Keys against a layer's physical schema and builds the GDAL SQL statement that orders the layer by them.
- * Every field must exactly (case-sensitively) match a schema field or the layer's stored ID column, appear only once, and carry an explicit `ASC`/`DESC` direction;
- * `Virtual Field`s are not physical columns and are rejected. Validation completes before any SQL is built. For stable `start`/`max` pagination a hidden ascending
- * feature ID tiebreaker is appended: the stored ID column (quoted) when the layer reports one, since GeoPackage's SQLite dialect does not accept a bare `FID`,
- * otherwise OGR SQL `FID`. The tiebreaker is omitted only when a Sort Key names the stored ID column; a Sort Key on an attribute field that happens to be named
- * `FID` never suppresses it.
+ * @description Validates an ordered list of Sort Keys against a layer's physical schema and builds the GDAL SQL statement that orders the layer by them, in the
+ * dialect and with the select list its {@link FeatureIdentity} gives. Every field must exactly (case-sensitively) match a schema field or the identity's `keyName`
+ * (the Persistent FID column or Primary Key field), appear only once, and carry an explicit `ASC`/`DESC` direction; `Virtual Field`s are not physical columns
+ * and are rejected. Validation completes before any SQL is built. A Sort Key on `keyName` sorts by the identity's `keySortTerm` (OGR SQL spells a Persistent FID
+ * column `FID`). For stable `start`/`max` pagination a hidden ascending Feature ID tiebreaker (`keySortTerm`) is appended, unless a Sort Key already names
+ * `keyName`; a Sort Key on an attribute field that only shares the key's name in another case never suppresses it.
  *
- * Limitation: on a layer with no stored ID column (e.g. Shapefile, Memory) and an attribute field named `FID`, OGR SQL resolves both the quoted `"FID"` and the
- * bare `FID` tiebreaker to that attribute field, so the tiebreaker cannot order equal rows by feature ID (verified with GDAL on Shapefile and Memory layers:
+ * Limitation: on a layer with no Persistent FID (e.g. Shapefile, Memory) and an attribute field named `FID`, OGR SQL resolves both the quoted `"FID"` and the
+ * bare `FID` tiebreaker to that attribute field, so the tiebreaker cannot order equal rows by Feature ID (verified with GDAL on Shapefile and Memory layers:
  * `ORDER BY "FID" ASC, FID ASC` and `ORDER BY "FID" ASC, FID DESC` return the same order). Pagination stays stable there because OGR SQL's sort is stable:
- * rows that tie on every key keep their natural (ascending feature ID) order.
+ * rows that tie on every key keep their natural (ascending Feature ID) order.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string} layerName - Name of the layer to select from.
  * @param {readonly SortKey[] | undefined} orderBy - Ordered Sort Keys; missing or empty means natural order.
  * @param {readonly string[]} schemaFields - Physical attribute field names of the layer.
- * @param {string} fidColumn - The layer's stored ID column name, or an empty string when it has none.
- * @param {SqlDialect} dialect - Dialect the statement runs in, which decides how identifiers are escaped; see {@link sqlDialectForDriver}.
+ * @param {FeatureIdentity} identity - The layer's feature identity (see {@link resolveFeatureIdentity}).
  * @returns {string | null} The `SELECT … ORDER BY …` statement, or null when no ordering was requested.
  * @throws {Error} If a Sort Key is malformed, names an unknown field, has an invalid direction, or repeats a field; the message names the field.
  * @see {@link SortKey}
@@ -645,16 +648,16 @@ export function buildOrderBySql(
   layerName: string,
   orderBy: readonly SortKey[] | undefined,
   schemaFields: readonly string[],
-  fidColumn: string,
-  dialect: SqlDialect
+  identity: FeatureIdentity
 ): string | null {
   if (!orderBy || orderBy.length === 0) {
     return null;
   }
 
+  const { dialect, keyName, keySortTerm } = identity;
   const knownFields = new Set(schemaFields);
-  if (fidColumn) {
-    knownFields.add(fidColumn);
+  if (keyName) {
+    knownFields.add(keyName);
   }
   const seen = new Set<string>();
   for (const key of orderBy) {
@@ -683,67 +686,66 @@ export function buildOrderBySql(
   }
 
   const terms = orderBy.map(
-    ([field, direction]) => `${quoteSqlIdentifier(field, dialect)} ${direction}`
+    ([field, direction]) =>
+      `${keyName && field === keyName ? keySortTerm : quoteSqlIdentifier(field, dialect)} ${direction}`
   );
-  const tiebreaker = fidColumn ? quoteSqlIdentifier(fidColumn, dialect) : "FID";
-  if (!fidColumn || !seen.has(fidColumn)) {
-    terms.push(`${tiebreaker} ASC`);
+  if (!keyName || !seen.has(keyName)) {
+    terms.push(`${keySortTerm} ASC`);
   }
-  return `SELECT * FROM ${quoteSqlIdentifier(layerName, dialect)} ORDER BY ${terms.join(", ")}`;
+  return `SELECT ${identity.selectList} FROM ${quoteSqlIdentifier(layerName, dialect)} ORDER BY ${terms.join(", ")}`;
 }
 
 /**
- * @description Reports whether a layer's `start`/`max` window can be pushed into SQL `LIMIT`/`OFFSET`: the driver must speak the SQLite dialect and the layer must have a
- * Persistent FID column to order unsorted pages by. With a spatial filter only GeoPackage qualifies: its driver rewrites the filter into the statement's `WHERE` clause (with or
- * without an R-tree), so it applies before the window, whereas the plain SQLite driver filters the result layer after `LIMIT`/`OFFSET` and would return short or empty pages.
+ * @description Reports whether a query's `start`/`max` window can be pushed into SQL `LIMIT`/`OFFSET`, from the layer's {@link FeatureIdentity}: its driver's own
+ * SQL engine must apply the window (`sqlWindow`), before any spatial filter when the query has one. GeoPackage rewrites a spatial filter into the statement's
+ * `WHERE` clause, so it applies before the window; the plain SQLite driver filters the result layer after `LIMIT`/`OFFSET` and would return short or empty pages.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
- * @param {string | undefined} driverName - GDAL driver short name (`dataset.driver.description`).
- * @param {string} fidColumn - The layer's Persistent FID column name, or an empty string when it has none.
+ * @param {FeatureIdentity} identity - The layer's feature identity.
  * @param {boolean} hasSpatialFilter - Whether the query applies a spatial filter.
- * @returns {boolean} True when {@link buildPagedSelectSql} may be used for the layer.
+ * @returns {boolean} True when {@link buildPagedSelectSql} may be used for the query.
  */
 export function supportsSqlWindow(
-  driverName: string | undefined,
-  fidColumn: string,
+  identity: FeatureIdentity,
   hasSpatialFilter: boolean
 ): boolean {
-  if (sqlDialectForDriver(driverName) !== "SQLITE" || fidColumn.length === 0) {
-    return false;
-  }
-  return !hasSpatialFilter || driverName === "GPKG";
+  return (
+    identity.sqlWindow === "always"
+    || (identity.sqlWindow === "unfiltered" && !hasSpatialFilter)
+  );
 }
 
 /**
- * @description Builds a SQLite-dialect statement that returns one `start`/`max` window of a layer. With Sort Keys it is {@link buildOrderBySql}'s statement (same validation, same ID tiebreaker);
- * without them rows are ordered by the Persistent FID column, which is a GeoPackage table's natural order. `LIMIT -1` means no limit, for a window with a start but no maximum.
+ * @description Builds a statement that returns one `start`/`max` window of a layer in its driver's own SQL dialect. With Sort Keys it is {@link buildOrderBySql}'s
+ * statement (same validation, same Feature ID tiebreaker and select list); without them rows are ordered by Feature ID (`keySortTerm`), which is a GeoPackage
+ * table's natural order. The window clause comes from {@link sqlWindowClause} (in SQLite, `LIMIT -1` means no limit, for a window with a start but no maximum).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string} layerName - Name of the layer to select from.
- * @param {readonly SortKey[] | undefined} orderBy - Ordered Sort Keys; missing or empty means ID order.
+ * @param {readonly SortKey[] | undefined} orderBy - Ordered Sort Keys; missing or empty means Feature ID order.
  * @param {readonly string[]} schemaFields - Physical attribute field names of the layer.
- * @param {string} fidColumn - The layer's Persistent FID column name; required.
+ * @param {FeatureIdentity} identity - The layer's feature identity; its `sqlWindow` must not be `none`.
  * @param {number} start - Zero-based index of the first row, a non-negative integer.
  * @param {number | undefined} max - Maximum number of rows, a non-negative integer, or undefined for no limit.
  * @returns {string} The `SELECT … ORDER BY … LIMIT … OFFSET …` statement.
- * @throws {Error} If the layer has no Persistent FID, a window bound is not a non-negative integer, or a Sort Key is invalid (see {@link buildOrderBySql}).
+ * @throws {Error} If the layer's driver cannot window in SQL, a window bound is not a non-negative integer, or a Sort Key is invalid (see {@link buildOrderBySql}).
  * @see {@link supportsSqlWindow}
  */
 export function buildPagedSelectSql(
   layerName: string,
   orderBy: readonly SortKey[] | undefined,
   schemaFields: readonly string[],
-  fidColumn: string,
+  identity: FeatureIdentity,
   start: number,
   max: number | undefined
 ): string {
-  if (!fidColumn) {
+  if (identity.sqlWindow === "none") {
     throw new Error(
-      `Cannot page layer "${layerName}" in SQL: it has no Persistent FID column`
+      `Cannot page layer "${layerName}" in SQL: its driver's SQL engine is not profiled for windows or it has no Persistent FID`
     );
   }
   if (!Number.isInteger(start) || start < 0) {
@@ -757,9 +759,9 @@ export function buildPagedSelectSql(
     );
   }
   const ordered =
-    buildOrderBySql(layerName, orderBy, schemaFields, fidColumn, "SQLITE")
-    ?? `SELECT * FROM ${quoteSqlIdentifier(layerName, "SQLITE")} ORDER BY ${quoteSqlIdentifier(fidColumn, "SQLITE")} ASC`;
-  return `${ordered} LIMIT ${max ?? -1} OFFSET ${start}`;
+    buildOrderBySql(layerName, orderBy, schemaFields, identity)
+    ?? `SELECT ${identity.selectList} FROM ${quoteSqlIdentifier(layerName, identity.dialect)} ORDER BY ${identity.keySortTerm} ASC`;
+  return `${ordered} ${sqlWindowClause(identity.dialect, start, max)}`;
 }
 
 /**
@@ -1081,12 +1083,13 @@ export class GeospatialEngine {
    * @description Runs a SQL statement for a session on a short-lived handle (see `withSqlHandle`) and hands the result layer to `consume`.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-11-17
-   * @updated 2026-11-17
+   * @updated 2026-11-22
    * @since 0.1.0-dev
    * @template T
    * @param {EngineSession} session - Active layer session.
-   * @param {string} sql - Statement to run in the driver's SQL dialect.
+   * @param {string} sql - Statement to run.
    * @param {gdal.Geometry | null} spatialFilter - Spatial filter GDAL applies to the result layer (for SQLite dialects, before any `LIMIT`/`OFFSET`), or null for none.
+   * @param {SqlDialect | undefined} dialect - Engine to run it in: undefined for the driver's own, `OGRSQL` to force GDAL's generic engine (see {@link FeatureIdentity}).
    * @param {(resultLayer: gdal.Layer) => T} consume - Reads the result layer synchronously; the layer must not be used after it returns.
    * @returns {T} Whatever `consume` returns.
    * @throws {Error} If the handle cannot be opened or GDAL rejects the statement.
@@ -1095,14 +1098,11 @@ export class GeospatialEngine {
     session: EngineSession,
     sql: string,
     spatialFilter: gdal.Geometry | null,
+    dialect: SqlDialect | undefined,
     consume: (resultLayer: gdal.Layer) => T
   ): T {
     return this.withSqlHandle(session.dataset, session.filePath, (handle) =>
-      consume(
-        spatialFilter ?
-          handle.executeSQL(sql, spatialFilter)
-        : handle.executeSQL(sql)
-      )
+      consume(handle.executeSQL(sql, spatialFilter ?? undefined, dialect))
     );
   }
 
@@ -1723,10 +1723,10 @@ export class GeospatialEngine {
   }
 
   /**
-   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits (staged deletions are left out), applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer. On SQLite-dialect layers (GeoPackage, SQLite) without a `featureIds` filter the start/max window is pushed into SQL `LIMIT`/`OFFSET` (see {@link buildPagedSelectSql}), so unsorted pages come back in stored ID order and `totalMatched` is counted from the filtered session layer; all SQL runs on a short-lived handle (see `executeSessionSql`).
+   * @description Executes a spatial query against a cached layer session, intercepting staged feature edits (staged deletions are left out), applying spatial/ID filters, optional multi-column `orderBy` Sort Key ordering via GDAL SQL (validated against the layer schema, with a hidden ascending ID tiebreaker), and start/max pagination, serializing features as a contiguous binary WKB packet buffer. Where the layer's driver can window in SQL (see {@link supportsSqlWindow}) and there is no `featureIds` filter, the start/max window is pushed into SQL `LIMIT`/`OFFSET` (see {@link buildPagedSelectSql}), so unsorted pages come back in Feature ID order and `totalMatched` is counted from the filtered session layer; all SQL runs on a short-lived handle (see `executeSessionSql`). Every read path, direct or SQL, gets each feature's Feature ID from the layer's {@link FeatureIdentity} (Ticket #387), and the packet is written with {@link encodeFeaturePacket}, so string Feature IDs reach the map unchanged (Ticket #388).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-15
-   * @updated 2026-11-20
+   * @updated 2026-11-22
    * @since 0.1.0-dev
    * @param {string} layerId - Unique layer identifier.
    * @param {QueryExtentOptions | BoundingBox} [options] - Structured query options or legacy extent [minX, minY, maxX, maxY].
@@ -1854,29 +1854,32 @@ export class GeospatialEngine {
             layer.setSpatialFilter(null);
           }
 
-          // Choose how the base rows are read. A SQLite-dialect layer pages in SQL (Ticket #339) unless a
+          // Choose how the base rows are read. A layer whose driver windows in SQL pages there (Ticket #339) unless a
           // featureIds whitelist must be applied before the window; other sorted queries use a SQL result
-          // layer without a window; everything else iterates the session layer directly.
-          const fidColumn = this.resolveFidColumn(activeSession);
+          // layer without a window; everything else iterates the session layer directly. Every path reads
+          // Feature IDs through the layer's feature identity (Ticket #387).
+          const schemaFields = layer.fields.getNames();
+          const identity = resolveFeatureIdentity({
+            driverName: activeSession.dataset.driver?.description,
+            layerName: layer.name,
+            fidColumn: this.resolveFidColumn(activeSession),
+            fieldNames: schemaFields,
+            dataset: activeSession.dataset,
+          });
           const canRunSql =
             typeof activeSession.dataset.executeSQL === "function";
           const windowed =
             canRunSql
             && allowedIdSet === null
             && (sliceStart > 0 || sliceEnd !== Infinity)
-            && supportsSqlWindow(
-              activeSession.dataset.driver?.description,
-              fidColumn,
-              shouldFilter
-            );
-          const schemaFields = layer.fields.getNames();
+            && supportsSqlWindow(identity, shouldFilter);
           let sql: string | null = null;
           if (windowed) {
             sql = buildPagedSelectSql(
               layer.name,
               orderByOpt,
               schemaFields,
-              fidColumn,
+              identity,
               sliceStart,
               sliceEnd === Infinity ? undefined : sliceEnd - sliceStart
             );
@@ -1885,8 +1888,7 @@ export class GeospatialEngine {
               layer.name,
               orderByOpt,
               schemaFields,
-              fidColumn,
-              sqlDialectForDriver(activeSession.dataset.driver?.description)
+              identity
             );
             sql = canRunSql ? orderSql : null;
           }
@@ -1904,22 +1906,20 @@ export class GeospatialEngine {
           // Index of the first base row read, so a windowed read's rows keep their position in the full result.
           const rowOffset = windowed ? sliceStart : 0;
 
-          interface ExtractedRecord {
-            fid: bigint;
-            wkbBytes: Uint8Array | null;
-            propsBytes: Uint8Array | null;
-            properties: Record<string, unknown>;
-          }
-
           const encoder = new TextEncoder();
-          const extracted: ExtractedRecord[] = [];
+          const extracted: FeaturePacketRecord[] = [];
           const features: QueryExtentFeature[] = [];
           let totalMatched = 0;
 
-          const collectBaseFeature = (feature: gdal.Feature): void => {
+          // fromSql: the feature comes from a SQL result layer rather than the session layer.
+          const collectBaseFeature = (
+            feature: gdal.Feature,
+            fromSql: boolean
+          ): void => {
+            let featureId: FeatureId = feature.fid;
             try {
-              const rawFid = feature.fid;
-              const fidKey = String(rawFid);
+              featureId = identity.readId(feature, fromSql);
+              const fidKey = String(featureId);
 
               if (allowedIdSet !== null && !allowedIdSet.has(fidKey)) {
                 return;
@@ -1937,7 +1937,6 @@ export class GeospatialEngine {
               }
 
               const stagedEdit = layerEditEntry?.modifiedFeatures.get(fidKey);
-              const fid = BigInt(rawFid);
               let wkbBytes: Uint8Array | null = null;
 
               if (includeGeometry) {
@@ -1969,6 +1968,8 @@ export class GeospatialEngine {
 
               if (fields === undefined) {
                 const rawProps = feature.fields.toObject();
+                // A SQL result may list the Feature ID among the attributes; a direct read never does.
+                identity.removeIdColumns(rawProps, fromSql);
                 properties = {};
                 for (const [k, v] of Object.entries(rawProps)) {
                   properties[k] = transformFeatureProperty(k, v, fieldTypeMap);
@@ -2013,17 +2014,21 @@ export class GeospatialEngine {
                 properties = {};
               }
 
-              extracted.push({ fid, wkbBytes, propsBytes, properties });
+              extracted.push({
+                id: featureId,
+                wkb: wkbBytes,
+                properties: propsBytes,
+              });
 
               features.push({
-                id: rawFid,
+                id: featureId,
                 wkb: wkbBytes ?? undefined,
                 ...(stagedEdit?.geojson ? { geojson: stagedEdit.geojson } : {}),
                 properties,
               });
             } catch (featErr) {
               logging.warn("Failed to process feature", featErr, {
-                fid: feature.fid,
+                featureId,
                 scope: "GeospatialEngine",
               });
             }
@@ -2034,12 +2039,17 @@ export class GeospatialEngine {
               activeSession,
               sql,
               sqlSpatialFilter,
+              identity.executeDialect,
               (resultLayer) => {
-                resultLayer.features.forEach(collectBaseFeature);
+                resultLayer.features.forEach((feature) =>
+                  collectBaseFeature(feature, true)
+                );
               }
             );
           } else {
-            layer.features.forEach(collectBaseFeature);
+            layer.features.forEach((feature) =>
+              collectBaseFeature(feature, false)
+            );
           }
           if (windowed) {
             totalMatched = windowedBaseCount;
@@ -2077,10 +2087,14 @@ export class GeospatialEngine {
                 continue;
               }
 
-              const numericFid =
-                typeof added.id === "number" ? BigInt(Math.trunc(added.id))
-                : /^-?\d+$/.test(addedIdKey) ? BigInt(addedIdKey)
-                : BigInt(0);
+              // A staged new feature keeps the ID it was staged with, string or number, in both the packet and the feature list (Ticket #388).
+              const addedId: FeatureId =
+                (
+                  typeof added.id === "number"
+                  && !Number.isSafeInteger(added.id)
+                ) ?
+                  String(added.id)
+                : added.id;
 
               const wkbBytes =
                 includeGeometry && added.wkb ?
@@ -2117,13 +2131,12 @@ export class GeospatialEngine {
               }
 
               extracted.push({
-                fid: numericFid,
-                wkbBytes,
-                propsBytes,
-                properties,
+                id: addedId,
+                wkb: wkbBytes,
+                properties: propsBytes,
               });
               features.push({
-                id: added.id,
+                id: addedId,
                 wkb: wkbBytes ?? undefined,
                 ...(added.geojson ? { geojson: added.geojson } : {}),
                 properties,
@@ -2131,57 +2144,7 @@ export class GeospatialEngine {
             }
           }
 
-          let hasGeometry = false;
-          let hasProperties = false;
-          let totalSize = 12; // 12-byte header
-
-          for (const rec of extracted) {
-            const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
-            const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
-            if (wkbLen > 0) hasGeometry = true;
-            if (propsLen > 0) hasProperties = true;
-            // fid (8) + wkbLength (4) + W + propsLength (4) + P
-            totalSize += 8 + 4 + wkbLen + 4 + propsLen;
-          }
-
-          const flags =
-            (hasGeometry ? WKB_FLAG_HAS_GEOMETRY : 0)
-            | (hasProperties ? WKB_FLAG_HAS_PROPERTIES : 0);
-
-          const packetBuffer = new ArrayBuffer(totalSize);
-          const view = new DataView(packetBuffer);
-          const uint8View = new Uint8Array(packetBuffer);
-
-          // Header (12 bytes, Little-Endian)
-          view.setUint32(0, WKB_PACKET_MAGIC, true);
-          view.setUint16(4, WKB_PACKET_VERSION, true);
-          view.setUint16(6, flags, true);
-          view.setUint32(8, extracted.length, true);
-
-          let offset = 12;
-          for (const rec of extracted) {
-            // int64 fid (8 bytes)
-            view.setBigInt64(offset, rec.fid, true);
-            offset += 8;
-
-            // uint32 wkbLength (4 bytes)
-            const wkbLen = rec.wkbBytes ? rec.wkbBytes.byteLength : 0;
-            view.setUint32(offset, wkbLen, true);
-            offset += 4;
-            if (wkbLen > 0 && rec.wkbBytes) {
-              uint8View.set(rec.wkbBytes, offset);
-              offset += wkbLen;
-            }
-
-            // uint32 propsLength (4 bytes)
-            const propsLen = rec.propsBytes ? rec.propsBytes.byteLength : 0;
-            view.setUint32(offset, propsLen, true);
-            offset += 4;
-            if (propsLen > 0 && rec.propsBytes) {
-              uint8View.set(rec.propsBytes, offset);
-              offset += propsLen;
-            }
-          }
+          const packetBuffer = encodeFeaturePacket(extracted);
 
           return {
             layerId,

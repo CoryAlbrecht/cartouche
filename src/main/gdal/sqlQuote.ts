@@ -19,25 +19,13 @@
  * characters, is passed through literally, which both dialects accept inside quotes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 
-/**
- * @typedef {"SQLITE" | "OGRSQL"} SqlDialect
- * @description The SQL dialect a statement is written in, named as GDAL's `executeSQL` dialect argument names it.
- */
-export type SqlDialect = "SQLITE" | "OGRSQL";
+import { driverProfile, type SqlDialect } from "./driverProfiles";
 
-/**
- * @description GDAL driver short names whose `executeSQL` runs SQLite's own dialect by default; every other driver runs OGR SQL.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-17
- * @updated 2026-11-17
- * @since 0.1.0-dev
- * @type {ReadonlySet<string>}
- */
-const SQLITE_DIALECT_DRIVERS: ReadonlySet<string> = new Set(["GPKG", "SQLite"]);
+export type { SqlDialect } from "./driverProfiles";
 
 /**
  * @description Matches a UTF-16 high surrogate not followed by a low surrogate, or a low surrogate not preceded by a high surrogate.
@@ -51,22 +39,19 @@ const LONE_SURROGATE =
   /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 /**
- * @description Resolves the dialect GDAL's `executeSQL` runs by default for a driver.
+ * @description Resolves the dialect Cartouche writes a driver's statements in: its Driver Profile's native dialect, otherwise OGR SQL.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-17
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string | undefined} driverName - GDAL driver short name (`dataset.driver.description`).
- * @returns {SqlDialect} `SQLITE` for the GeoPackage and SQLite drivers, otherwise `OGRSQL`.
+ * @returns {SqlDialect} The profile's `nativeSqlDialect`, or `OGRSQL` for a driver without one.
+ * @see {@link driverProfile}
  */
 export function sqlDialectForDriver(
   driverName: string | undefined
 ): SqlDialect {
-  return (
-      typeof driverName === "string" && SQLITE_DIALECT_DRIVERS.has(driverName)
-    ) ?
-      "SQLITE"
-    : "OGRSQL";
+  return driverProfile(driverName).nativeSqlDialect ?? "OGRSQL";
 }
 
 /**
@@ -110,6 +95,31 @@ export function quoteSqlIdentifier(name: string, dialect: SqlDialect): string {
       name.replace(/[\\"]/g, "\\$&")
     : name.split('"').join('""');
   return `"${escaped}"`;
+}
+
+/**
+ * @description Writes the clause that limits a statement's result to one `start`/`max` window, in the dialect's syntax. Only dialects whose engine runs
+ * windows have one; adding a native dialect (e.g. PostgreSQL's `OFFSET … LIMIT ALL`, MSSQL's `OFFSET … ROWS FETCH NEXT … ROWS ONLY`) means adding its case
+ * here and its quoting in {@link quoteSqlIdentifier}.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {SqlDialect} dialect - Dialect the statement runs in.
+ * @param {number} start - Zero-based index of the first row.
+ * @param {number | undefined} max - Maximum number of rows, or undefined for no limit.
+ * @returns {string} The window clause, without a leading space.
+ * @throws {Error} If the dialect has no window clause.
+ */
+export function sqlWindowClause(
+  dialect: SqlDialect,
+  start: number,
+  max: number | undefined
+): string {
+  if (dialect === "SQLITE") {
+    return `LIMIT ${max ?? -1} OFFSET ${start}`;
+  }
+  throw new Error(`The ${dialect} dialect has no window clause`);
 }
 
 /**

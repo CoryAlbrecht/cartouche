@@ -4,7 +4,7 @@
  * @description Unit tests for pure calendar-aware UTC temporal mathematics, stepping, range calculation, and auto-detection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
@@ -48,6 +48,7 @@ const {
 ) as typeof import("@renderer/state/timeFilterSignals");
 
 import type { LayerDescriptor, GisFeature } from "../../../src/shared/types";
+import { encodeFeaturePacket } from "../../../src/shared/layers/featurePacket";
 
 describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)", () => {
   it("correctly determines leap years in UTC", () => {
@@ -309,20 +310,16 @@ describe("timeFilterMath: autoDetectTemporalRange & IPC Sorted Queries (Ticket #
       names: "Test",
     });
 
-    // 2. Binary packet buffer (12-byte header, 8-byte fid, 4-byte wkbLen=0, 4-byte propsLen, JSON text)
-    const jsonStr = JSON.stringify({ start_date: "0500-06-06" });
-    const encoder = new TextEncoder();
-    const jsonBytes = encoder.encode(jsonStr);
-    const packetBuf = new ArrayBuffer(24 + 4 + jsonBytes.byteLength);
-    const view = new DataView(packetBuf);
-    view.setUint32(0, 0x43415254, true); // magic
-    view.setUint16(4, 1, true); // version
-    view.setUint16(6, 0x02, true); // flags (HAS_PROPERTIES)
-    view.setUint32(8, 1, true); // count
-    view.setBigInt64(12, 73n, true); // fid
-    view.setUint32(20, 0, true); // wkbLen = 0
-    view.setUint32(24, jsonBytes.byteLength, true); // propsLen
-    new Uint8Array(packetBuf, 28).set(jsonBytes);
+    // 2. WKB Feature Packet buffer
+    const packetBuf = encodeFeaturePacket([
+      {
+        id: 73,
+        wkb: null,
+        properties: new TextEncoder().encode(
+          JSON.stringify({ start_date: "0500-06-06" })
+        ),
+      },
+    ]);
 
     assert.deepEqual(extractFirstFeatureProperties({ buffer: packetBuf }), {
       start_date: "0500-06-06",
