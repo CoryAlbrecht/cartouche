@@ -4,7 +4,7 @@
  * @description Reusable custom color picker widget subclassing BasicWidget, featuring a full-width solid color preview matching the shade/tint surface height, 2D shade/tint surface, hue and transparency strips, screen eyedropper, format dropdown, and synchronized bottom text inputs.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link parseCssColor}
@@ -63,7 +63,7 @@ export const COLOR_FORMATS: ColorFormat[] = [
  * @typedef {Object} ColourPickerWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
  * @property {string} [initialColor='#00ff00ff'] - Starting color string in any valid CSS format.
- * @property {ColorFormat} [format='HEX'] - Preferred initial color format.
+ * @property {ColorFormat} [format] - Format the picker starts in (defaults to the initial colour's own format, else HEX). The widget follows the prop again only when the prop itself changes; between changes the format the user picks in the dropdown is kept.
  * @property {(color: string) => void} [onChange] - Callback fired whenever color changes with CSS string.
  * @property {boolean} [disabled=false] - Whether color picking and interactive controls are disabled.
  * @property {boolean} [allowAlpha=true] - Whether the transparency strip is shown and alpha may differ from 1. When false the picker only produces opaque colours.
@@ -84,7 +84,7 @@ export interface ColourPickerWidgetProps extends Omit<
  * @description Custom color picker widget subclassing BasicWidget, embeddable across Dockview panels, dialogs, and parent widgets.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {ColourPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} ColourPickerWidget React component.
@@ -152,12 +152,17 @@ export const ColourPickerWidget: React.FC<ColourPickerWidgetProps> = ({
     }
   }, [initialColor, propFormat]);
 
-  // Synchronize format when propFormat changes externally
+  // Follow the format prop only when the prop itself changes, so a format the
+  // user picks in the dropdown is kept until the parent passes a new one.
+  const prevPropFormatRef = useRef(propFormat);
   useEffect(() => {
-    if (propFormat && propFormat !== activeFormat) {
-      setActiveFormat(propFormat);
+    if (propFormat !== prevPropFormatRef.current) {
+      prevPropFormatRef.current = propFormat;
+      if (propFormat) {
+        setActiveFormat(propFormat);
+      }
     }
-  }, [propFormat, activeFormat]);
+  }, [propFormat]);
 
   /**
    * Dispatches color updates to internal state and notifies onChange callback.

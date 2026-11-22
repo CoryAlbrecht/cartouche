@@ -4,7 +4,7 @@
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link ColourPickerWidget}
@@ -46,7 +46,7 @@ import {
  * @typedef {Object} GradientPickerWidgetProps
  * @extends Omit<BasicWidgetProps, 'children'>
  * @property {string[]} [initialStops] - Array of '<color> <percent>' stop definitions (defaults to {@link DEFAULT_GRADIENT_STOPS}, black to green).
- * @property {ColorFormat} [format='HEX'] - Preferred initial color format for serialization and embedded color picker.
+ * @property {ColorFormat} [format='HEX'] - Format the stops are first serialized in and the embedded ColourPickerWidget starts in. The widget follows the prop again only when the prop itself changes; between changes the format the user picks in the embedded ColourPickerWidget is kept.
  * @property {(stops: string[]) => void} [onChange] - Callback fired whenever gradient stops change, with formatted strings.
  * @property {boolean} [disabled=false] - Whether the gradient picker and stop controls are disabled against user interactions.
  */
@@ -100,7 +100,7 @@ function areStopsEqual(a?: string[], b?: string[] | null): boolean {
  * @description Reusable gradient picker widget subclassing BasicWidget, featuring inline boundary stop buttons, intermediate stop toggle pins, a stop selector dropdown, vertical guide lines, drag physics with pointer capture, stop deletion, double-click stop creation with color interpolation, and an embedded ColourPickerWidget.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {GradientPickerWidgetProps} props - Component properties.
  * @returns {React.ReactElement} GradientPickerWidget React component.
@@ -150,12 +150,16 @@ export const GradientPickerWidget: React.FC<GradientPickerWidgetProps> = ({
   const prevInitialStopsRef = useRef<string[] | undefined>(initialStops);
   const lastEmittedStopsRef = useRef<string[] | null>(null);
 
-  // Sync format prop if changed externally
+  // Follow the format prop only when the prop itself changes, so a format the
+  // user picks in the embedded ColourPickerWidget is kept until the parent
+  // passes a new one.
+  const prevPropFormatRef = useRef<ColorFormat>(propFormat);
   useEffect(() => {
-    if (propFormat && propFormat !== activeFormat) {
+    if (propFormat !== prevPropFormatRef.current) {
+      prevPropFormatRef.current = propFormat;
       setActiveFormat(propFormat);
     }
-  }, [propFormat, activeFormat]);
+  }, [propFormat]);
 
   // Sync initialStops if changed externally
   useEffect(() => {

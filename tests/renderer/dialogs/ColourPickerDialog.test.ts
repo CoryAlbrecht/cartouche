@@ -4,7 +4,7 @@
  * @description Component tests verifying ColourPickerDialog portal rendering, localized default title and Apply / Cancel labels, allowAlpha passthrough, keyboard Escape dismissal, backdrop click cancellation, Apply/Cancel actions, and integration with ColorInput and PreferencesDialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-16
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link ColourPickerDialog}
  * @see {@link ColorInput}
@@ -636,6 +636,50 @@ describe("ColourPickerDialog Component & Modal Integration (Ticket #206)", () =>
       "Notation must be preserved"
     );
     assertOpaqueGreen(appliedColor);
+  });
+
+  it("opened on a Hex colour, switched to RGB and applied, commits an rgb() string (Ticket #383)", async () => {
+    let appliedColor = "";
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerDialog, {
+          isOpen: true,
+          initialColor: "#00ff00ff",
+          format: "HEX",
+          onApply: (c: string) => {
+            appliedColor = c;
+          },
+          onCancel: () => {},
+        })
+      );
+    });
+
+    const formatSelect = findElementsByClass(
+      doc.body,
+      "colour-picker-format-select"
+    )[0];
+    await act(async () => {
+      formatSelect.value = "RGB";
+      formatSelect.dispatchEvent({ type: "change", bubbles: true });
+    });
+
+    const applyBtn = findElementsByClass(
+      doc.body,
+      "colour-picker-dialog-apply-btn"
+    )[0];
+    await act(async () => {
+      applyBtn.dispatchEvent({ type: "click", bubbles: true });
+    });
+
+    assert.ok(
+      appliedColor.startsWith("rgb("),
+      `Apply must commit the chosen RGB format, got: ${appliedColor}`
+    );
+    assert.equal(
+      findElementsByClass(doc.body, "colour-picker-channel-input").length,
+      4,
+      "The widget must still show RGB channel inputs"
+    );
   });
 
   it("dismisses modal on Escape key press", async () => {

@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying GradientPickerWidget 2 lh preview bar, inline boundary stop buttons, intermediate stop toggle pins, drag physics with pointer capture, stop deletion, double-click creation with color interpolation, embedded ColourPickerWidget, UI preference scaling, and (#366) stop drags followed in the window that owns the widget (a detached dialog window), not the global window. The stop parsing and serialization helper tests live in tests/shared/colors/gradientStops.test.ts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link GradientPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -852,6 +852,45 @@ describe("GradientPickerWidget Component & Interactions (Ticket #207)", () => {
       "#000000ff 0%",
       "Active stop color must update from ColourPickerWidget"
     );
+  });
+
+  it("keeps a format chosen in the embedded picker and serializes the stops in it (Ticket #383)", async () => {
+    let latestStops: string[] = [];
+
+    await act(async () => {
+      root?.render(
+        React.createElement(GradientPickerWidget, {
+          initialStops: ["#000000ff 0%", "#00ff00ff 100%"],
+          format: "HEX",
+          onChange: (stops: string[]) => {
+            latestStops = stops;
+          },
+        })
+      );
+    });
+
+    const formatSelect = findElementsByClass(
+      container,
+      "colour-picker-format-select"
+    )[0];
+    assert.ok(formatSelect, "Embedded format dropdown must exist");
+    await act(async () => {
+      formatSelect.value = "RGB";
+      formatSelect.dispatchEvent({ type: "change", bubbles: true });
+    });
+
+    assert.equal(
+      findElementsByClass(container, "colour-picker-channel-input").length,
+      4,
+      "Embedded picker must keep RGB and show its 4 channel inputs"
+    );
+    assert.equal(latestStops.length, 2);
+    for (const stop of latestStops) {
+      assert.ok(
+        stop.startsWith("rgb("),
+        `Stops must serialize in RGB, got: ${stop}`
+      );
+    }
   });
 });
 

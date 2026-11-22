@@ -4,7 +4,7 @@
  * @description Component and unit tests verifying ColourPickerWidget full-size solid preview, 2D shade/tint surface, hue and alpha strips, eyedropper, format dropdown, bottom channel inputs, and UI preference scaling.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-08
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link ColourPickerWidget}
  * @see {@link prefsUiIconSize}
@@ -455,6 +455,65 @@ describe("Reusable ColourPickerWidget Component (Ticket #205)", () => {
     assert.ok(
       lastColor.startsWith("hsl("),
       `Callback must return hsl format, got: ${lastColor}`
+    );
+  });
+
+  it("keeps a format chosen in the dropdown when a format prop is set (Ticket #383)", async () => {
+    let lastColor = "";
+    await act(async () => {
+      root?.render(
+        React.createElement(ColourPickerWidget, {
+          initialColor: "#ff0000ff",
+          format: "HEX",
+          onChange: (c: string) => {
+            lastColor = c;
+          },
+        })
+      );
+    });
+
+    const formatSelect = findElementsByClass(
+      container,
+      "colour-picker-format-select"
+    )[0];
+    await act(async () => {
+      formatSelect.value = "RGB";
+      formatSelect.dispatchEvent({ type: "change", bubbles: true });
+    });
+
+    assert.equal(
+      findElementsByClass(container, "colour-picker-channel-input").length,
+      4,
+      "RGB chosen over a HEX format prop must render 4 channel inputs"
+    );
+    assert.ok(
+      lastColor.startsWith("rgb("),
+      `Callback must return rgb format, got: ${lastColor}`
+    );
+  });
+
+  it("follows a changed format prop (Ticket #383)", async () => {
+    const render = (format: "HEX" | "HSL") =>
+      act(async () => {
+        root?.render(
+          React.createElement(ColourPickerWidget, {
+            initialColor: "#ff0000ff",
+            format,
+          })
+        );
+      });
+    await render("HEX");
+    assert.equal(
+      findElementsByClass(container, "colour-picker-channel-input").length,
+      0,
+      "HEX format shows no channel inputs"
+    );
+
+    await render("HSL");
+    assert.equal(
+      findElementsByClass(container, "colour-picker-channel-input").length,
+      4,
+      "Changing the format prop to HSL must show its 4 channel inputs"
     );
   });
 
