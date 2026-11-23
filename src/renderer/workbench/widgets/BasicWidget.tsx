@@ -237,7 +237,7 @@ export interface BasicWidgetProps
  * @description Subclasses Widget to provide a panel container with a 2-control title header bar and close control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-22
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {BasicWidgetProps} props - Component properties.
  * @returns {React.ReactElement} Basic widget panel element.
@@ -472,8 +472,13 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
       // Determine dock location (top, bottom, left, right)
       const dock = resolvedDock;
 
-      // Determine the largest minHeight and minWidth across all widgets in this dock panel / group
+      // Largest minimums within this group (overlapped tabs) and across the whole dock
       const panelsInGroup: any[] = group?.panels || [effectivePanelApi];
+      const groupLargest = findLargestPanelConstraints(
+        panelsInGroup,
+        effectiveMinWidth,
+        effectiveMinHeight
+      );
       const allPanels: any[] = [...panelsInGroup];
 
       if (
@@ -500,10 +505,15 @@ export const BasicWidget: React.FC<BasicWidgetProps> = (props) => {
         effectiveMinHeight
       );
 
+      // Across the dock (a side dock's width, a top/bottom dock's height) every
+      // group takes the dock's largest minimum; along the dock each group keeps
+      // its own, so the dock's minimum length is the sum of its widgets' (#392).
       if (groupApi && typeof groupApi.setConstraints === "function") {
+        const sideDock = dock === "left" || dock === "right";
+        const endDock = dock === "top" || dock === "bottom";
         groupApi.setConstraints({
-          minimumWidth: largestMinW,
-          minimumHeight: largestMinH,
+          minimumWidth: endDock ? groupLargest.largestMinW : largestMinW,
+          minimumHeight: sideDock ? groupLargest.largestMinH : largestMinH,
         });
       }
 

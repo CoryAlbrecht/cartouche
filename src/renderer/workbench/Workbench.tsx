@@ -128,6 +128,12 @@ import {
   rebalanceDockOnResize,
   detectAndSyncSashDrag,
 } from "./dockLayoutEngine";
+import {
+  applyGroupLayoutPriority,
+  ensureMapGroupConstraints,
+  layoutWorkbenchGrid,
+  reportWorkbenchMinimumSize,
+} from "./workbenchResizePolicy";
 
 const SAVED_LAYOUT_KEY = "cartouche_workbench_layout_v2";
 const SAVED_PANEL_STATES_KEY = "cartouche_workbench_panel_states_v1";
@@ -229,7 +235,7 @@ const WorkbenchTab: React.FC<IDockviewPanelHeaderProps> = (props) => {
  * @description Primary window shell component orchestrating Electron frameless menubar actions, dockable panel grids, reactive signal state, and status bar displays. Edit menu Cut and Copy availability comes from the shared selection command predicates (disabled for vertices in Vertex Editor Mode).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @returns {JSX.Element} Main workbench window container.
  */
@@ -450,6 +456,7 @@ export const Workbench: React.FC = () => {
   };
 
   const savedPanelStatesRef = useRef<Map<string, SavedPanelState>>(new Map());
+  const dockviewContainerRef = useRef<HTMLElement | null>(null);
 
   // Load saved panel states from localStorage on mount
   useEffect(() => {
@@ -554,33 +561,31 @@ export const Workbench: React.FC = () => {
     (api: DockviewApi) => {
       api.clear();
 
-      // 1. Center: Map Viewport (Canvas tab group with 1 tab) - high priority absorbs window resizes
+      // 1. Center: Map Viewport (Canvas tab group with 1 tab). Its group takes
+      // window resizes (applyGroupLayoutPriority, layoutWorkbenchGrid).
       const mapPanel = api.addPanel({
         id: "map-viewport",
         component: "map-viewport",
         title: "Spatial Map Viewport",
-        priority: "high",
-      } as any);
+      });
 
-      // 2. Left: Layers Panel - low priority maintains fixed width on window resizes
+      // 2. Left: LayerTreeWidget - keeps its width on window resizes
       api.addPanel({
         id: "layer-tree",
         component: "layer-tree",
         title: "Layers",
         position: { referencePanel: mapPanel, direction: "left" },
         initialWidth: 260,
-        priority: "low",
-      } as any);
+      });
 
-      // 3. Top: Time Filter Panel - low priority maintains fixed height on window resizes
+      // 3. Top: Time Filter Panel - keeps its height on window resizes
       api.addPanel({
         id: "time-filter",
         component: "time-filter",
         title: "Time Filter",
         position: { referencePanel: mapPanel, direction: "above" },
         initialHeight: 74,
-        priority: "low",
-      } as any);
+      });
 
       setWidgetDockItemVisibility("layer-tree", true);
       setWidgetDockItemVisibility("time-filter", true);
@@ -618,8 +623,7 @@ export const Workbench: React.FC = () => {
             width: savedState.floatingBounds.width,
             height: savedState.floatingBounds.height,
           },
-          priority: "low",
-        } as any);
+        });
       } else {
         const dockItemMatch = getWidgetDockItem(id);
         if (dockItemMatch?.containerId) {
@@ -722,8 +726,7 @@ export const Workbench: React.FC = () => {
             : undefined,
           initialWidth,
           initialHeight,
-          priority: "low",
-        } as any);
+        });
 
         if (dockItemMatch) {
           setWidgetDockItemVisibility(id, true);
@@ -796,10 +799,17 @@ export const Workbench: React.FC = () => {
     registerTogglePanelHandler(togglePanel);
   }, [togglePanel]);
 
-  // Proportional rebalance on window resize
+  // Window resize policy (ADR 0025 §8): Dockview's auto-resizing is off and the
+  // Workbench lays the Dockview layout out itself, so only the map viewport takes window
+  // resizes; then widgets sharing a dock are rebalanced along it by axis ratio.
   useEffect(() => {
-    if (!dockviewApi) return;
-    const handleWindowResize = () => {
+    const container = dockviewContainerRef.current;
+    if (!dockviewApi || !container) return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[entries.length - 1]?.contentRect;
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
+      layoutWorkbenchGrid(dockviewApi, rect.width, rect.height);
+
       const docks: WidgetDockId[] = ["left", "right", "top", "bottom"];
       for (const dock of docks) {
         const items = (widgetDocksSignal.value[dock] || []).filter(
@@ -818,10 +828,11 @@ export const Workbench: React.FC = () => {
           }
         }
       }
-    };
 
-    window.addEventListener("resize", handleWindowResize);
-    return () => window.removeEventListener("resize", handleWindowResize);
+      reportWorkbenchMinimumSize(dockviewApi, container);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
   }, [dockviewApi]);
 
   const onReady = useCallback(
@@ -935,6 +946,8 @@ export const Workbench: React.FC = () => {
 
       api.panels.forEach(guardPanelClose);
       api.onDidAddPanel(guardPanelClose);
+      api.groups.forEach(applyGroupLayoutPriority);
+      api.onDidAddGroup(applyGroupLayoutPriority);
       enforceMapCanvasGroupIsolation(api);
       enforceWidgetHeaderHiding(api);
 
@@ -942,6 +955,10 @@ export const Workbench: React.FC = () => {
       api.onDidLayoutChange(() => {
         enforceMapCanvasGroupIsolation(api);
         enforceWidgetHeaderHiding(api);
+        ensureMapGroupConstraints(api);
+        if (dockviewContainerRef.current) {
+          reportWorkbenchMinimumSize(api, dockviewContainerRef.current);
+        }
         capturePanelStates(api);
         updateOpenPanelsState(api);
 
@@ -1885,9 +1902,10 @@ export const Workbench: React.FC = () => {
         <ToolbarPanel zone='left' />
 
         {/* Dockview Container with 4 Edge Panel capabilities */}
-        <main className='dockview-wrapper'>
+        <main className='dockview-wrapper' ref={dockviewContainerRef}>
           <DockviewReact
             className='dockview-theme-light'
+            disableAutoResizing
             components={widgetComponents}
             defaultTabComponent={WorkbenchTab}
             getTabContextMenuItems={getTabContextMenuItems}

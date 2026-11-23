@@ -23,6 +23,7 @@ import {
   moveWidgetToDock,
 } from "../state/widgetDockSignals";
 import { updatePreference } from "../state/preferencesSignals";
+import { isSqueezedDockDepth } from "./workbenchResizePolicy";
 
 /**
  * @typedef {Object} ProportionalItemInput
@@ -322,10 +323,10 @@ export function rebalanceDockOnResize(
 /**
  * Detects sash adjustments between panels or outer boundary changes and synchronizes ratios and cross-axis dimensions.
  * @function detectAndSyncSashDrag
- * @description Inspects panel pixel dimensions, updates axis ratios on divider movement, and synchronizes cross-axis sizes.
+ * @description Inspects panel pixel dimensions, updates axis ratios on divider movement, and synchronizes cross-axis sizes. A cross-axis depth the window resize policy squeezed the dock to ({@link isSqueezedDockDepth}) is not stored as the dock's dimension.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-05
- * @updated 2026-11-05
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {WidgetDockId} dock - Perimeter dock zone to inspect.
  * @param {DockviewApi} api - Active Dockview container API.
@@ -356,7 +357,12 @@ export async function detectAndSyncSashDrag(
         dockItems[0].dimensions.width
       : dockItems[0].dimensions.height;
 
-    if (currentCrossAxis > 0 && currentCrossAxis !== storedCrossAxis) {
+    // A squeeze by the window resize policy is not a user sash drag (#392)
+    if (
+      currentCrossAxis > 0
+      && currentCrossAxis !== storedCrossAxis
+      && !isSqueezedDockDepth(dock, currentCrossAxis)
+    ) {
       // Synchronize all panels in dock to this cross-axis size
       syncDockCrossAxis(dock, currentCrossAxis, api);
 

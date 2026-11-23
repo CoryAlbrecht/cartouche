@@ -4,7 +4,7 @@
  * @description Main entry point for the Cartouche Electron desktop application. Handles window creation, lifecycle events, Linux desktop integration, frameless window controls, dynamic *Window frame authorization, and IPC communication channels.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @see {@link handleIpc}
@@ -62,6 +62,10 @@ import { bindLoggingPreferences } from "./logging/loggingPreferences";
 import { logging } from "../shared/logging";
 import { configureBundledGdalData } from "./gdal/bundledGdalData";
 import { attachWorkbenchMemoryMeter } from "./memory/workbenchMemoryMeter";
+import {
+  applyWorkbenchMinimumSize,
+  WORKBENCH_FALLBACK_MINIMUM_SIZE,
+} from "./workbenchMinimumSize";
 
 let cliLogConfig: LogCliConfig;
 
@@ -155,7 +159,7 @@ Categories=Graphics;Science;Geoscience;
  * @description Instantiates and configures the main Electron browser window, restoring bounds from PreferencesStore, configuring dynamic *Window dialog open handlers, attaching IPC event handlers, and starting the status bar memory meter.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link PreferencesStore}
  * @returns {void}
@@ -199,8 +203,12 @@ function createWindow() {
   const savedWbW = wbPrefs["ui.workbench.location.width"]?.value;
   const savedWbH = wbPrefs["ui.workbench.location.height"]?.value;
 
-  const hasValidWidth = typeof savedWbW === "number" && savedWbW >= 960;
-  const hasValidHeight = typeof savedWbH === "number" && savedWbH >= 640;
+  const hasValidWidth =
+    typeof savedWbW === "number"
+    && savedWbW >= WORKBENCH_FALLBACK_MINIMUM_SIZE.width;
+  const hasValidHeight =
+    typeof savedWbH === "number"
+    && savedWbH >= WORKBENCH_FALLBACK_MINIMUM_SIZE.height;
   const hasValidPos =
     typeof savedWbX === "number"
     && typeof savedWbY === "number"
@@ -212,8 +220,9 @@ function createWindow() {
   const mainWindowOptions: Electron.BrowserWindowConstructorOptions = {
     width: wbWidth,
     height: wbHeight,
-    minWidth: 960,
-    minHeight: 640,
+    // Replaced by the renderer's computed minimum once the Workbench lays out (#392)
+    minWidth: WORKBENCH_FALLBACK_MINIMUM_SIZE.width,
+    minHeight: WORKBENCH_FALLBACK_MINIMUM_SIZE.height,
     title: "Cartouche",
     backgroundColor: "#ffffff",
     frame: false, // Frameless window with custom menubar & window controls
@@ -584,6 +593,10 @@ function startApp(): void {
         isConfirmedClose = true;
         mainWindow.close();
       }
+    });
+
+    onIpc("window-set-minimum-size", (_event, size) => {
+      applyWorkbenchMinimumSize(mainWindow, size);
     });
 
     handleIpc("window-is-maximized", () => {

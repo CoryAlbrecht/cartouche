@@ -4,7 +4,7 @@
  * @description Electron preload script establishing a secure contextBridge interface (`electronAPI`) between the main process and the renderer process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link ElectronAPI}
  */
@@ -17,13 +17,14 @@ import type {
   MemoryUsageSnapshot,
   ProjectLayerStyleItem,
   StagedFeatureEdit,
+  WorkbenchMinimumSize,
 } from "@shared/types";
 
 /**
  * @description Safe API exposed to the renderer window via contextBridge, mapping IPC invocations and event listeners.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @type {ElectronAPI}
  */
@@ -47,6 +48,9 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener("app:request-close", handler);
     };
   },
+  /** @ipc window-set-minimum-size */
+  setWorkbenchMinimumSize: (size: WorkbenchMinimumSize) =>
+    ipcRenderer.send("window-set-minimum-size", size),
   /** @ipc window-is-maximized */
   isWindowMaximized: () => ipcRenderer.invoke("window-is-maximized"),
   /** @ipc window-maximized-state */

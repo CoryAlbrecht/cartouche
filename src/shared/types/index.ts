@@ -291,6 +291,21 @@ export type PreferenceMap = Record<string, PreferenceItem>;
 export type DropPosition = "before" | "after" | "into" | "append-root";
 
 /**
+ * @typedef {Object} WorkbenchMinimumSize
+ * @description A minimum size for the Workbench window, in whole pixels, computed by the renderer from the map viewport's and docked widgets' minimums (ADR 0025 §8).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @property {number} width - Minimum window width.
+ * @property {number} height - Minimum window height.
+ */
+export interface WorkbenchMinimumSize {
+  width: number;
+  height: number;
+}
+
+/**
  * @typedef {Object} ElectronAPI
  * @property {string} platform - Native operating system platform string.
  * @property {string} version - Runtime Electron version.
@@ -300,6 +315,7 @@ export type DropPosition = "before" | "after" | "into" | "append-root";
  * @property {() => void} closeWindow - Closes main window.
  * @property {() => void} [confirmCloseWindow] - Confirms Workbench closure after Layer Dirty State and Project Dirty State checks pass.
  * @property {(callback: () => void) => () => void} [onRequestClose] - Registers listener for OS or window-level close requests.
+ * @property {(size: WorkbenchMinimumSize) => void} [setWorkbenchMinimumSize] - Sets the Workbench window's minimum size, computed from the map viewport's and docked widgets' minimums (ADR 0025 §8).
  * @property {() => Promise<boolean>} isWindowMaximized - Queries window maximized state.
  * @property {(callback: (isMaximized: boolean) => void) => () => void} onMaximizedState - Registers window maximized state change listener.
  * @property {(callback: (snapshot: import('./memory').MemoryUsageSnapshot) => void) => () => void} [onMemoryUsage] - Subscribes to the memory meter samples Main pushes about every 2 s while the Workbench is visible.
@@ -333,7 +349,7 @@ export type DropPosition = "before" | "after" | "into" | "append-root";
  * @property {(layerId: string | null, selectedFeatureIds: Array<string | number>) => Promise<void>} [setFeatureSelection] - Synchronizes selected feature IDs for the active or target layer to the Main process.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 export interface ElectronAPI {
@@ -350,6 +366,8 @@ export interface ElectronAPI {
   confirmCloseWindow?: () => void;
   /** @ipc app:request-close */
   onRequestClose?: (callback: () => void) => () => void;
+  /** @ipc window-set-minimum-size */
+  setWorkbenchMinimumSize?: (size: WorkbenchMinimumSize) => void;
   /** @ipc window-is-maximized */
   isWindowMaximized: () => Promise<boolean>;
   /** @ipc window-maximized-state */
