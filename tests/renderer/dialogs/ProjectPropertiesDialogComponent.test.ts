@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-19
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -378,7 +378,7 @@ describe("ProjectPropertiesDialog component (Ticket #271)", () => {
       "uses the shared TimeFilterControls component"
     );
     assert.ok(
-      html.includes('class="toolbar-btn active"'),
+      html.includes('class="toolbar-btn time-filter-icon-btn active"'),
       "Enabled toggle reflects the draft"
     );
     assert.ok(
@@ -392,6 +392,45 @@ describe("ProjectPropertiesDialog component (Ticket #271)", () => {
     assert.ok(
       !html.includes("Frame:") && !html.includes("time-filter-slider"),
       "no playhead or scrubber in the dialog"
+    );
+    activeProjectPropertiesTabSignal.value = "general";
+  });
+
+  it("Time Filter tab shows the draft's Time Reckoning, and From / To in it (Ticket #397)", () => {
+    openProjectPropertiesDialog();
+    activeProjectPropertiesTabSignal.value = "time_filter";
+    let html = render();
+    assert.ok(
+      html.includes('id="time-reckoning-kind"'),
+      "Time Reckoning dropdown"
+    );
+    assert.ok(
+      html.includes('<option value="gregory" selected=""'),
+      "Gregorian by default"
+    );
+    assert.ok(
+      html.includes("time-reckoning-era-fields is-preset"),
+      "preset Era read-only"
+    );
+
+    updateProjectPropertiesDraft({
+      timeReckoning: {
+        kind: "number",
+        zeroTime: 0,
+        eraLabelAfter: "+",
+        eraLabelBefore: "−",
+        eraLabelPosition: "prefix",
+        eraCounting: "durations",
+      },
+    });
+    html = render();
+    assert.ok(
+      !html.includes("time-reckoning-era-fields"),
+      "Plain Number hides the Era"
+    );
+    assert.ok(
+      html.includes("plain-number-spinner-input"),
+      "From / To as plain numbers"
     );
     activeProjectPropertiesTabSignal.value = "general";
   });

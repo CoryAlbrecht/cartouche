@@ -435,6 +435,12 @@
   --cartouche-component-locked-banner-border: var(--cartouche-theme-warning);
   --cartouche-component-locked-banner-fg: var(--cartouche-theme-fg-primary);
 
+  /* Layer Properties Time Filter tab: warning that the configured fields don't
+     suit the project's Time Reckoning (Ticket #397) */
+  --cartouche-layer-prop-time-warning-bg: var(--cartouche-theme-warning-subtle);
+  --cartouche-layer-prop-time-warning-border: var(--cartouche-theme-warning);
+  --cartouche-layer-prop-time-warning-fg: var(--cartouche-theme-fg-primary);
+
   /* Snapping Options Dialog: the dialog body, the empty-project notice, and the
      per-layer Control Matrix header and row lines */
   --cartouche-snapping-options-bg: var(--cartouche-theme-bg);

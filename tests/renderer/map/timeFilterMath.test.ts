@@ -4,7 +4,7 @@
  * @description Unit tests for pure calendar-aware UTC temporal mathematics, stepping, range calculation, and auto-detection.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link isLeapYearUtc}
  * @see {@link getDaysInMonthUtc}
@@ -48,6 +48,10 @@ const {
 ) as typeof import("@renderer/state/timeFilterSignals");
 
 import type { LayerDescriptor, GisFeature } from "../../../src/shared/types";
+import { GREGORIAN_TIME_RECKONING } from "../../../src/shared/time/timeReckoning";
+
+/** The Gregorian Time Reckoning every Ticket #235 calculation runs in. */
+const GREGORY = GREGORIAN_TIME_RECKONING;
 import { encodeFeaturePacket } from "../../../src/shared/layers/featurePacket";
 
 describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)", () => {
@@ -71,28 +75,34 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     const base = Date.UTC(2026, 10, 10, 12, 0, 0, 0);
 
     // +5 Seconds
-    assert.strictEqual(stepTemporalTimestamp(base, 5, "Seconds"), base + 5000);
+    assert.strictEqual(
+      stepTemporalTimestamp(base, 5, "Seconds", GREGORY),
+      base + 5000
+    );
 
     // -2 Minutes
     assert.strictEqual(
-      stepTemporalTimestamp(base, -2, "Minutes"),
+      stepTemporalTimestamp(base, -2, "Minutes", GREGORY),
       base - 120000
     );
 
     // +3 Hours
     assert.strictEqual(
-      stepTemporalTimestamp(base, 3, "Hours"),
+      stepTemporalTimestamp(base, 3, "Hours", GREGORY),
       base + 10800000
     );
 
     // +1 Day
-    assert.strictEqual(stepTemporalTimestamp(base, 1, "Days"), base + 86400000);
+    assert.strictEqual(
+      stepTemporalTimestamp(base, 1, "Days", GREGORY),
+      base + 86400000
+    );
   });
 
   it("steps calendar months with month-end day clamping", () => {
     // Jan 31, 2024 + 1 Month -> Feb 29, 2024 (leap year clamping)
     const jan31Leap = Date.UTC(2024, 0, 31, 14, 0, 0, 0);
-    const feb29 = stepTemporalTimestamp(jan31Leap, 1, "Months");
+    const feb29 = stepTemporalTimestamp(jan31Leap, 1, "Months", GREGORY);
     const dFeb = new Date(feb29);
     assert.strictEqual(dFeb.getUTCFullYear(), 2024);
     assert.strictEqual(dFeb.getUTCMonth(), 1); // Feb
@@ -101,7 +111,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
 
     // Jan 31, 2023 + 1 Month -> Feb 28, 2023 (non-leap clamping)
     const jan31NonLeap = Date.UTC(2023, 0, 31, 14, 0, 0, 0);
-    const feb28 = stepTemporalTimestamp(jan31NonLeap, 1, "Months");
+    const feb28 = stepTemporalTimestamp(jan31NonLeap, 1, "Months", GREGORY);
     const dFebNonLeap = new Date(feb28);
     assert.strictEqual(dFebNonLeap.getUTCFullYear(), 2023);
     assert.strictEqual(dFebNonLeap.getUTCMonth(), 1); // Feb
@@ -109,7 +119,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
 
     // Aug 31, 2024 + 1 Month -> Sep 30, 2024
     const aug31 = Date.UTC(2024, 7, 31, 10, 0, 0, 0);
-    const sep30 = stepTemporalTimestamp(aug31, 1, "Months");
+    const sep30 = stepTemporalTimestamp(aug31, 1, "Months", GREGORY);
     const dSep = new Date(sep30);
     assert.strictEqual(dSep.getUTCFullYear(), 2024);
     assert.strictEqual(dSep.getUTCMonth(), 8); // Sep
@@ -119,7 +129,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
   it("steps calendar years with Feb 29 leap day clamping", () => {
     // Feb 29, 2024 + 1 Year -> Feb 28, 2025
     const feb29Leap = Date.UTC(2024, 1, 29, 12, 0, 0, 0);
-    const feb28Next = stepTemporalTimestamp(feb29Leap, 1, "Years");
+    const feb28Next = stepTemporalTimestamp(feb29Leap, 1, "Years", GREGORY);
     const dNext = new Date(feb28Next);
     assert.strictEqual(dNext.getUTCFullYear(), 2025);
     assert.strictEqual(dNext.getUTCMonth(), 1);
@@ -127,7 +137,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     assert.strictEqual(dNext.getUTCHours(), 12);
 
     // Feb 29, 2024 + 4 Years -> Feb 29, 2028 (leap year retains Feb 29)
-    const feb29Later = stepTemporalTimestamp(feb29Leap, 4, "Years");
+    const feb29Later = stepTemporalTimestamp(feb29Leap, 4, "Years", GREGORY);
     const dLater = new Date(feb29Later);
     assert.strictEqual(dLater.getUTCFullYear(), 2028);
     assert.strictEqual(dLater.getUTCMonth(), 1);
@@ -136,7 +146,12 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
 
   it("supports micro-decimal stepping down to MIN_TIME_FILTER_STEP (0.000000031623 years ~ 1 second)", () => {
     const base = Date.UTC(2026, 0, 1, 0, 0, 0, 0);
-    const result = stepTemporalTimestamp(base, MIN_TIME_FILTER_STEP, "Years");
+    const result = stepTemporalTimestamp(
+      base,
+      MIN_TIME_FILTER_STEP,
+      "Years",
+      GREGORY
+    );
     const deltaMs = result - base;
     // 0.000000031623 * 365 * 86400 * 1000 = 997.26 ms ≈ 1000 ms = 1 second
     assert.ok(
@@ -146,14 +161,32 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
   });
 
   it("computeTemporalStepAttribute computes exact millisecond step for fixed units and 1 for calendar-variable units", () => {
-    assert.strictEqual(computeTemporalStepAttribute(50, "Milliseconds"), 50);
-    assert.strictEqual(computeTemporalStepAttribute(5, "Seconds"), 5000);
-    assert.strictEqual(computeTemporalStepAttribute(2.5, "Minutes"), 150000);
-    assert.strictEqual(computeTemporalStepAttribute(3, "Hours"), 10800000);
-    assert.strictEqual(computeTemporalStepAttribute(1, "Days"), 86400000);
-    assert.strictEqual(computeTemporalStepAttribute(2, "Weeks"), 1209600000);
-    assert.strictEqual(computeTemporalStepAttribute(1, "Months"), 1);
-    assert.strictEqual(computeTemporalStepAttribute(1, "Years"), 1);
+    assert.strictEqual(
+      computeTemporalStepAttribute(50, "Milliseconds", GREGORY),
+      50
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(5, "Seconds", GREGORY),
+      5000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(2.5, "Minutes", GREGORY),
+      150000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(3, "Hours", GREGORY),
+      10800000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(1, "Days", GREGORY),
+      86400000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(2, "Weeks", GREGORY),
+      1209600000
+    );
+    assert.strictEqual(computeTemporalStepAttribute(1, "Months", GREGORY), 1);
+    assert.strictEqual(computeTemporalStepAttribute(1, "Years", GREGORY), 1);
   });
 
   it("computeFrameEnd clamps frame end to rangeEnd boundary", () => {
@@ -162,7 +195,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     const unit = "Seconds";
     const rangeEnd = 1_003_000;
 
-    const end = computeFrameEnd(start, step, unit, rangeEnd);
+    const end = computeFrameEnd(start, step, unit, rangeEnd, GREGORY);
     assert.strictEqual(
       end,
       1_003_000,
@@ -170,7 +203,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     );
 
     const wideRangeEnd = 1_010_000;
-    const end2 = computeFrameEnd(start, step, unit, wideRangeEnd);
+    const end2 = computeFrameEnd(start, step, unit, wideRangeEnd, GREGORY);
     assert.strictEqual(
       end2,
       1_005_000,
@@ -182,7 +215,7 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     const start = Date.UTC(2026, 9, 20, 14, 0, 0); // 2026-10-20 14:00:00 UTC
     const end = Date.UTC(2027, 9, 20, 14, 0, 0);
 
-    const plusOneMonth = stepTemporalTimestamp(start, 1, "Months");
+    const plusOneMonth = stepTemporalTimestamp(start, 1, "Months", GREGORY);
     assert.strictEqual(
       plusOneMonth,
       Date.UTC(2026, 10, 20, 14, 0, 0),
@@ -190,7 +223,14 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     );
 
     const midway = start + 25 * 86400000;
-    const snapped = snapToTemporalStep(midway, start, end, 1, "Months");
+    const snapped = snapToTemporalStep(
+      midway,
+      start,
+      end,
+      1,
+      "Months",
+      GREGORY
+    );
     assert.strictEqual(
       snapped,
       Date.UTC(2026, 10, 20, 14, 0, 0),
@@ -198,10 +238,24 @@ describe("timeFilterMath: Calendar-Aware UTC Arithmetic & Stepping (Ticket #235)
     );
 
     // Clamping checks
-    const underflow = snapToTemporalStep(start - 100000, start, end, 1, "Days");
+    const underflow = snapToTemporalStep(
+      start - 100000,
+      start,
+      end,
+      1,
+      "Days",
+      GREGORY
+    );
     assert.strictEqual(underflow, start, "Underflow must clamp to rangeStart");
 
-    const overflow = snapToTemporalStep(end + 100000, start, end, 1, "Days");
+    const overflow = snapToTemporalStep(
+      end + 100000,
+      start,
+      end,
+      1,
+      "Days",
+      GREGORY
+    );
     assert.strictEqual(overflow, end, "Overflow must clamp to rangeEnd");
   });
 });
@@ -211,7 +265,7 @@ describe("timeFilterMath: calculateActiveTemporalRange (Ticket #235)", () => {
     const layers: LayerDescriptor[] = [
       { id: "l1", name: "Non-temporal", temporalEnabled: false } as any,
     ];
-    assert.strictEqual(calculateActiveTemporalRange(layers, []), null);
+    assert.strictEqual(calculateActiveTemporalRange(layers, [], GREGORY), null);
   });
 
   it("aggregates minimum and maximum timestamps across active temporal layer features", () => {
@@ -252,7 +306,7 @@ describe("timeFilterMath: calculateActiveTemporalRange (Ticket #235)", () => {
       },
     ];
 
-    const range = calculateActiveTemporalRange(layers, features);
+    const range = calculateActiveTemporalRange(layers, features, GREGORY);
     assert.ok(range, "Range must be calculated");
     assert.strictEqual(range.from, 500);
     assert.strictEqual(range.to, 3500);
@@ -291,7 +345,7 @@ describe("timeFilterMath: calculateActiveTemporalRange (Ticket #235)", () => {
       },
     ];
 
-    const range = calculateActiveTemporalRange(layers, features);
+    const range = calculateActiveTemporalRange(layers, features, GREGORY);
     assert.ok(range);
     const expected = Date.parse("2026-11-10T14:00:00.000Z");
     assert.strictEqual(range.from, expected);

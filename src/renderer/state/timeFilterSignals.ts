@@ -4,7 +4,7 @@
  * @description Preact reactive signals store managing global time filter active state, current frame window, range boundaries, and transport stepping options.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link isTimeFilterActiveSignal}
  * @see {@link timeFilterFrameStartSignal}
@@ -18,10 +18,13 @@
  * @see {@link setTimeFilterRange}
  * @see {@link setTimeFilterStep}
  * @see {@link resetTimeFilterState}
+ * @see {@link timeReckoningSignal}
+ * @see {@link setTimeReckoning}
  */
 
 import { signal, batch, type Signal } from "@preact/signals-react";
-import type { TimeFilterUnit } from "../../shared/types/project";
+import type { TimeFilterUnit, TimeReckoning } from "../../shared/types/project";
+import { GREGORIAN_TIME_RECKONING } from "../../shared/time/timeReckoning";
 
 /**
  * @signal isTimeFilterActiveSignal
@@ -77,6 +80,33 @@ export const timeFilterRangeStartSignal: Signal<number> = signal<number>(0);
  * @type {Signal<number>}
  */
 export const timeFilterRangeEndSignal: Signal<number> = signal<number>(0);
+
+/**
+ * @signal timeReckoningSignal
+ * @description The project's committed Time Reckoning with its Era (ADR 0038): how the TimeFilterWidget shows and steps instants. Changing it never changes the stored instants.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @type {Signal<TimeReckoning>}
+ */
+export const timeReckoningSignal: Signal<TimeReckoning> = signal<TimeReckoning>(
+  { ...GREGORIAN_TIME_RECKONING }
+);
+
+/**
+ * @function setTimeReckoning
+ * @description Commits a new Time Reckoning; From, To and the frame keep their stored values.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {TimeReckoning} reckoning - The new Time Reckoning.
+ * @returns {void}
+ */
+export function setTimeReckoning(reckoning: TimeReckoning): void {
+  timeReckoningSignal.value = { ...reckoning };
+}
 
 /**
  * @signal timeFilterStepSignal
@@ -197,7 +227,7 @@ export function setTimeFilterStep(step: number, unit?: TimeFilterUnit): void {
  * @description Resets all global time filter signals to default initial state.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @returns {void}
  */
@@ -210,5 +240,6 @@ export function resetTimeFilterState(): void {
     timeFilterRangeEndSignal.value = 0;
     timeFilterStepSignal.value = 1.0;
     timeFilterUnitSignal.value = "Days";
+    timeReckoningSignal.value = { ...GREGORIAN_TIME_RECKONING };
   });
 }

@@ -307,7 +307,45 @@
     <xs:attribute name="current" type="xs:string" />
     <xs:attribute name="step" type="xs:double" default="1.0" />
     <xs:attribute name="unit" type="xs:string" default="Days" />
+    <!-- Time Reckoning (ADR 0038): display and stepping only; from, to, current and zeroTime stay Unix-epoch ms -->
+    <xs:attribute name="reckoning" type="TimeReckoningType" default="gregory" />
+    <xs:attribute name="zeroTime" type="xs:double" />
+    <xs:attribute name="eraLabelAfter" type="xs:string" />
+    <xs:attribute name="eraLabelBefore" type="xs:string" />
+    <xs:attribute name="eraLabelPosition" type="EraLabelPositionType" />
+    <xs:attribute name="eraCounting" type="EraCountingType" />
   </xs:complexType>
+
+  <!-- Time Reckoning: a preset Calendar, a Custom Era or Plain Number -->
+  <xs:simpleType name="TimeReckoningType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="gregory" />
+      <xs:enumeration value="hebrew" />
+      <xs:enumeration value="islamic-civil" />
+      <xs:enumeration value="persian" />
+      <xs:enumeration value="ethiopic" />
+      <xs:enumeration value="coptic" />
+      <xs:enumeration value="buddhist" />
+      <xs:enumeration value="custom" />
+      <xs:enumeration value="number" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Era Label position: before or after the value -->
+  <xs:simpleType name="EraLabelPositionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="prefix" />
+      <xs:enumeration value="suffix" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Era Counting: dates (from 1, no year zero) or durations (from 0) -->
+  <xs:simpleType name="EraCountingType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="dates" />
+      <xs:enumeration value="durations" />
+    </xs:restriction>
+  </xs:simpleType>
 
   <!-- Layer Attribute Fields Collection Type -->
   <xs:complexType name="FieldsType">

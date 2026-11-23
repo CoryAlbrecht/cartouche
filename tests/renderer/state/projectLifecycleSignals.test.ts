@@ -1,10 +1,10 @@
 /**
  * @file projectLifecycleSignals.test.ts
  * @module tests/renderer/state/projectLifecycleSignals.test
- * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction).
+ * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction), including the Time Reckoning loaded from and saved to `<timeFilter>` (#397).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-12
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
 
@@ -35,7 +35,14 @@ import {
   projectLayersSignal,
   layerStylesSignal,
 } from "../../../src/renderer/state/gisSignals";
-import type { ProjectModel } from "../../../src/shared/types";
+import type {
+  ProjectModel,
+  ProjectTimeFilterConfig,
+} from "../../../src/shared/types";
+import {
+  timeReckoningSignal,
+  timeFilterRangeStartSignal,
+} from "../../../src/renderer/state/timeFilterSignals";
 
 describe("Project Lifecycle Signals & Actions", () => {
   let mockSaveFileResult: string | null = null;
@@ -44,6 +51,7 @@ describe("Project Lifecycle Signals & Actions", () => {
   let executedActions: string[] = [];
 
   let savedViewports: any[] = [];
+  let savedTimeFilters: Array<ProjectTimeFilterConfig | undefined> = [];
 
   beforeEach(() => {
     // Reset signals to blank slate
@@ -66,6 +74,7 @@ describe("Project Lifecycle Signals & Actions", () => {
     mockOpenFilesResult = [];
     savedProjects = [];
     savedViewports = [];
+    savedTimeFilters = [];
     executedActions = [];
 
     // Mock electronAPI on global window
@@ -73,9 +82,14 @@ describe("Project Lifecycle Signals & Actions", () => {
       electronAPI: {
         saveFile: async () => mockSaveFileResult,
         openFiles: async () => mockOpenFilesResult,
-        saveProject: async (filePath: string, viewport?: any) => {
+        saveProject: async (
+          filePath: string,
+          viewport?: any,
+          timeFilter?: ProjectTimeFilterConfig
+        ) => {
           savedProjects.push(filePath);
           savedViewports.push(viewport);
+          savedTimeFilters.push(timeFilter);
           return true;
         },
         openProject: async (filePath: string): Promise<ProjectModel> => ({
@@ -114,6 +128,55 @@ describe("Project Lifecycle Signals & Actions", () => {
     assert.equal(result, true);
     assert.equal(isProjectDirtySignal.value, false);
     assert.deepEqual(savedProjects, ["/path/to/my-project.cproj"]);
+  });
+
+  it("loads the project's Time Reckoning and saves it with the Time Filter (Ticket #397)", async () => {
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      filePath: "/path/to/relative.cproj",
+      metadata: { title: "Relative" },
+      layers: [],
+      timeFilter: {
+        enabled: true,
+        from: -1000,
+        to: 1000,
+        step: 1,
+        unit: "Days",
+        reckoning: "custom",
+        zeroTime: 42,
+        eraLabelAfter: "+",
+        eraLabelBefore: "−",
+        eraLabelPosition: "prefix",
+        eraCounting: "durations",
+      },
+    });
+    assert.equal(timeReckoningSignal.value.kind, "custom");
+    assert.equal(timeReckoningSignal.value.zeroTime, 42);
+    assert.equal(timeFilterRangeStartSignal.value, -1000);
+
+    assert.equal(await saveProjectAction(), true);
+    const saved = savedTimeFilters[0];
+    assert.equal(saved?.reckoning, "custom");
+    assert.equal(saved?.zeroTime, 42);
+    assert.equal(saved?.eraLabelPosition, "prefix");
+    assert.equal(saved?.eraCounting, "durations");
+    assert.equal(saved?.from, -1000);
+  });
+
+  it("a project without a reckoning loads as Gregorian (Ticket #397)", () => {
+    timeReckoningSignal.value = {
+      ...timeReckoningSignal.value,
+      kind: "number",
+    };
+    loadProjectIntoSignals({
+      format: "cartouche-xml",
+      filePath: "/path/to/legacy.cproj",
+      metadata: { title: "Legacy" },
+      layers: [],
+      timeFilter: { enabled: false, from: 0, to: 1000, step: 1, unit: "Days" },
+    });
+    assert.equal(timeReckoningSignal.value.kind, "gregory");
+    assert.equal(timeReckoningSignal.value.eraLabelAfter, "CE");
   });
 
   it("saveProjectAction on an untitled project prompts with saveFile; aborts if canceled", async () => {

@@ -1,10 +1,10 @@
 /**
  * @file TimestampSpinner.test.ts
  * @module tests/renderer/components/TimestampSpinner.test
- * @description Unit and component tests for TimestampSpinner verifying discrete segment rendering, boundary clamping, non-cascading arithmetic, keyboard navigation, and UTC synchronization.
+ * @description Unit and component tests for TimestampSpinner verifying discrete segment rendering, boundary clamping, non-cascading arithmetic, keyboard navigation, UTC synchronization, and the Time Reckoning era part (#397).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-14
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimestampSpinner}
  * @see {@link parseUtcTimestamp}
@@ -16,9 +16,11 @@
  * @see {@link SEGMENT_ORDER}
  */
 
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { createRendererJiti } from "../rendererJiti";
+import { GREGORIAN_TIME_RECKONING } from "../../../src/shared/time/timeReckoning";
+import type { TimeReckoning } from "../../../src/shared/types/project";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -878,52 +880,6 @@ describe("TimestampSpinner Interactive Component Lifecycle (Ticket #233)", () =>
     );
   });
 
-  it("direct numeric typing updates the focused segment and calls onChange", () => {
-    let emittedValue = 0;
-    const initialEpoch = Date.UTC(2026, 0, 15, 12, 0, 0); // January 15, 2026
-
-    act(() => {
-      root?.render(
-        React.createElement(TimestampSpinner, {
-          value: initialEpoch,
-          onChange: (val: number) => {
-            emittedValue = val;
-          },
-        })
-      );
-    });
-
-    const dayInput = findNodeByPredicate(
-      container,
-      (n) => n.getAttribute("data-segment") === "day"
-    );
-    assert.ok(dayInput);
-
-    // Focus day and type '2', then '8'
-    act(() => {
-      dayInput.focus();
-      dayInput.dispatchEvent({
-        type: "keydown",
-        key: "2",
-        bubbles: true,
-        cancelable: true,
-      });
-    });
-
-    assert.strictEqual(parseUtcTimestamp(emittedValue).day, 2);
-
-    act(() => {
-      dayInput.dispatchEvent({
-        type: "keydown",
-        key: "8",
-        bubbles: true,
-        cancelable: true,
-      });
-    });
-
-    assert.strictEqual(parseUtcTimestamp(emittedValue).day, 28);
-  });
-
   it("navigates between segments with ArrowRight and ArrowLeft keys", () => {
     act(() => {
       root?.render(
@@ -1011,5 +967,387 @@ describe("TimestampSpinner Interactive Component Lifecycle (Ticket #233)", () =>
       0,
       "Minute must reset to 0 on Backspace"
     );
+  });
+});
+
+describe("TimestampSpinner years 0–99 (Ticket #396)", () => {
+  it("buildUtcTimestamp keeps years 0–99 instead of mapping them to 1900–1999", () => {
+    const ms = buildUtcTimestamp({
+      year: 18,
+      month: 3,
+      day: 4,
+      hour: 5,
+      minute: 6,
+      second: 7,
+    });
+    assert.strictEqual(formatUtcTimestamp(ms), "0018-03-04 05:06:07");
+    const zero = buildUtcTimestamp({
+      year: 0,
+      month: 1,
+      day: 1,
+      hour: 0,
+      minute: 0,
+      second: 0,
+    });
+    // Proleptic Gregorian 0000-01-01T00:00:00Z
+    assert.strictEqual(zero, -62167219200000);
+  });
+
+  it("getDaysInMonthUtc uses the real year for years 0–99 (year 0 is a leap year, 1900 is not)", () => {
+    assert.strictEqual(getDaysInMonthUtc(0, 2), 29);
+    assert.strictEqual(getDaysInMonthUtc(1, 2), 28);
+  });
+});
+
+describe("TimestampSpinner deferred typing (Ticket #396)", () => {
+  let emitted: number[];
+
+  beforeEach(() => {
+    mock.timers.enable({ apis: ["setTimeout"] });
+    setupDom();
+    emitted = [];
+  });
+
+  afterEach(() => {
+    tearDownDom();
+    mock.timers.reset();
+  });
+
+  /** @description Renders a spinner at `epoch` that records every onChange value. */
+  function renderAt(epoch: number): void {
+    act(() => {
+      root?.render(
+        React.createElement(TimestampSpinner, {
+          value: epoch,
+          onChange: (v: number) => {
+            emitted.push(v);
+          },
+        })
+      );
+    });
+  }
+
+  /** @description Finds the input for a segment. */
+  function seg(name: string): MockElement {
+    const el = findNodeByPredicate(
+      container,
+      (n) => n.getAttribute("data-segment") === name
+    );
+    assert.ok(el, `Must find ${name} segment`);
+    return el;
+  }
+
+  /** @description Dispatches a keydown and returns the event. */
+  function press(el: MockElement, key: string): any {
+    const ev: any = {
+      type: "keydown",
+      key,
+      bubbles: true,
+      cancelable: true,
+      defaultPrevented: false,
+      preventDefault() {
+        ev.defaultPrevented = true;
+      },
+    };
+    act(() => {
+      el.dispatchEvent(ev);
+    });
+    return ev;
+  }
+
+  /** @description Focuses a segment input. */
+  function focus(el: MockElement): void {
+    act(() => {
+      el.focus();
+    });
+  }
+
+  /** @description Advances mocked timers inside act. */
+  function tick(ms: number): void {
+    act(() => {
+      mock.timers.tick(ms);
+    });
+  }
+
+  const Y1475 = Date.UTC(1475, 5, 15, 10, 20, 30);
+
+  it("shows exactly the digits typed into the year and saves 1812 after a 1000 ms pause", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    const shown: string[] = [];
+    for (const d of ["1", "8", "1", "2"]) {
+      press(year, d);
+      shown.push(year.value);
+    }
+    assert.deepStrictEqual(shown, ["1", "18", "181", "1812"]);
+    assert.strictEqual(emitted.length, 0, "onChange must wait for the pause");
+
+    tick(999);
+    assert.strictEqual(emitted.length, 0, "No commit before 1000 ms");
+    tick(1);
+    assert.strictEqual(emitted.length, 1);
+    assert.strictEqual(formatUtcTimestamp(emitted[0]), "1812-06-15 10:20:30");
+  });
+
+  it("restarts the 1000 ms pause on every keystroke", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    press(year, "1");
+    tick(800);
+    press(year, "8");
+    tick(800);
+    assert.strictEqual(emitted.length, 0);
+    tick(200);
+    assert.strictEqual(emitted.length, 1);
+  });
+
+  for (const trigger of ["Tab", "Enter", "ArrowRight", "ArrowLeft"]) {
+    it(`commits pending digits at once on ${trigger}`, () => {
+      renderAt(Y1475);
+      const month = seg("month");
+      focus(month);
+      press(month, "9");
+      assert.strictEqual(emitted.length, 0);
+      press(month, trigger);
+      assert.strictEqual(emitted.length, 1);
+      assert.strictEqual(parseUtcTimestamp(emitted[0]).month, 9);
+      tick(1000);
+      assert.strictEqual(emitted.length, 1, "The timer must not commit again");
+    });
+  }
+
+  it("commits pending digits on ArrowUp and steps from the typed value", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    for (const d of ["1", "8", "1", "2"]) press(year, d);
+    press(year, "ArrowUp");
+    assert.strictEqual(emitted.length, 1);
+    assert.strictEqual(parseUtcTimestamp(emitted[0]).year, 1813);
+  });
+
+  it("commits pending digits on blur", () => {
+    renderAt(Y1475);
+    const day = seg("day");
+    focus(day);
+    press(day, "3");
+    act(() => {
+      day.dispatchEvent({ type: "focusout", bubbles: true });
+    });
+    assert.strictEqual(emitted.length, 1);
+    assert.strictEqual(parseUtcTimestamp(emitted[0]).day, 3);
+  });
+
+  it("Escape throws unsaved digits away, restores the saved value and does nothing else", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    press(year, "1");
+    press(year, "8");
+    const ev = press(year, "Escape");
+    assert.strictEqual(year.value, "1475");
+    assert.strictEqual(doc.activeElement, year, "Focus must stay put");
+    assert.ok(ev.defaultPrevented);
+    tick(1000);
+    assert.strictEqual(emitted.length, 0, "Discarded digits are never saved");
+  });
+
+  it("Escape with no unsaved digits does nothing", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    const ev = press(year, "Escape");
+    assert.strictEqual(ev.defaultPrevented, false);
+    assert.strictEqual(emitted.length, 0);
+    assert.strictEqual(doc.activeElement, year);
+  });
+
+  it("auto-advances only when a two-digit field is full, committing it", () => {
+    renderAt(Y1475);
+    const month = seg("month");
+    focus(month);
+    press(month, "2");
+    assert.strictEqual(doc.activeElement, month, "No single-digit jump-ahead");
+    assert.strictEqual(month.value, "2");
+    press(month, "7");
+    // Out of range: limited to 12 without carrying into the year
+    assert.strictEqual(emitted.length, 1);
+    assert.strictEqual(formatUtcTimestamp(emitted[0]), "1475-12-15 10:20:30");
+    assert.strictEqual(doc.activeElement, seg("day"));
+
+    for (const name of ["hour", "minute"]) {
+      const el = seg(name);
+      focus(el);
+      press(el, "4");
+      assert.strictEqual(
+        doc.activeElement,
+        el,
+        `${name}: no jump on one digit`
+      );
+      press(el, "5");
+      assert.notStrictEqual(doc.activeElement, el, `${name}: jumps when full`);
+    }
+  });
+
+  it("never auto-advances from the year", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    for (const d of ["1", "8", "1", "2"]) press(year, d);
+    assert.strictEqual(doc.activeElement, year);
+    assert.strictEqual(emitted.length, 0);
+  });
+
+  it("limits a typed day to the month without carrying into the month", () => {
+    renderAt(Date.UTC(2026, 1, 10, 0, 0, 0));
+    const day = seg("day");
+    focus(day);
+    press(day, "3");
+    press(day, "9");
+    assert.strictEqual(formatUtcTimestamp(emitted[0]), "2026-02-28 00:00:00");
+  });
+
+  it("typing a two-digit year saves that year, not one in the 1900s", () => {
+    renderAt(Y1475);
+    const year = seg("year");
+    focus(year);
+    press(year, "1");
+    press(year, "8");
+    press(year, "Enter");
+    assert.strictEqual(formatUtcTimestamp(emitted[0]), "0018-06-15 10:20:30");
+  });
+});
+
+describe("TimestampSpinner Time Reckoning and era part (Ticket #397)", () => {
+  let emitted: number[];
+
+  const GREGORY: TimeReckoning = { ...GREGORIAN_TIME_RECKONING };
+  const RELATIVE: TimeReckoning = {
+    kind: "custom",
+    zeroTime: Date.UTC(2000, 0, 1),
+    eraLabelAfter: "+",
+    eraLabelBefore: "−",
+    eraLabelPosition: "prefix",
+    eraCounting: "durations",
+  };
+
+  beforeEach(() => {
+    mock.timers.enable({ apis: ["setTimeout"] });
+    setupDom();
+    emitted = [];
+  });
+
+  afterEach(() => {
+    tearDownDom();
+    mock.timers.reset();
+  });
+
+  /** @description Renders a spinner at `epoch` in `reckoning`, recording onChange values. */
+  function renderAt(epoch: number, reckoning: TimeReckoning = GREGORY): void {
+    act(() => {
+      root?.render(
+        React.createElement(TimestampSpinner, {
+          value: epoch,
+          reckoning,
+          onChange: (v: number) => {
+            emitted.push(v);
+          },
+        })
+      );
+    });
+  }
+
+  /** @description Finds the input for a segment. */
+  function seg(name: string): MockElement {
+    const el = findNodeByPredicate(
+      container,
+      (n) => n.getAttribute("data-segment") === name
+    );
+    assert.ok(el, `Must find ${name} segment`);
+    return el;
+  }
+
+  /** @description Dispatches a keydown inside act. */
+  function press(el: MockElement, key: string): void {
+    const ev: any = {
+      type: "keydown",
+      key,
+      bubbles: true,
+      cancelable: true,
+      defaultPrevented: false,
+      preventDefault() {
+        ev.defaultPrevented = true;
+      },
+      stopPropagation() {},
+    };
+    act(() => {
+      el.dispatchEvent(ev);
+    });
+  }
+
+  /** @description UTC ms of a proleptic Gregorian date with the year taken literally. */
+  function utc(year: number, month: number, day: number): number {
+    const d = new Date(0);
+    d.setUTCFullYear(year, month - 1, day);
+    return d.getTime();
+  }
+
+  it("shows a leading era part with the side's Era Label", () => {
+    renderAt(utc(-43, 3, 15));
+    assert.equal(seg("era").value, "BCE");
+    assert.equal(seg("year").value, "44");
+    renderAt(utc(2024, 3, 15));
+    assert.equal(seg("era").value, "CE");
+  });
+
+  it("Up, Down and Space switch the era, keeping the year number", () => {
+    renderAt(utc(44, 3, 15));
+    const era = seg("era");
+    act(() => era.focus());
+    press(era, "ArrowUp");
+    assert.equal(emitted.at(-1), utc(-43, 3, 15), "44 CE → 44 BCE");
+    press(era, " ");
+    press(era, "ArrowDown");
+    assert.equal(emitted.length, 3);
+  });
+
+  it("+, - and a label's first letter set the era", () => {
+    renderAt(utc(2000, 1, 2), RELATIVE);
+    const era = seg("era");
+    act(() => era.focus());
+    assert.equal(era.value, "+");
+    press(era, "-");
+    assert.equal(emitted.at(-1), utc(2000, 1, 1) - 86400000);
+    press(era, "+");
+    assert.equal(emitted.length, 1, "already after: nothing to change");
+
+    renderAt(utc(2024, 3, 15));
+    const gEra = seg("era");
+    act(() => gEra.focus());
+    press(gEra, "b");
+    assert.equal(emitted.at(-1), utc(-2023, 3, 15), "2024 CE → 2024 BCE");
+  });
+
+  it("the year accepts six digits for the Temporal range", () => {
+    renderAt(utc(2024, 3, 15));
+    const year = seg("year");
+    act(() => year.focus());
+    for (const d of "123456") press(year, d);
+    assert.equal(year.value, "123456");
+    press(year, "Enter");
+    assert.equal(new Date(emitted[0]).getUTCFullYear(), 123456);
+  });
+
+  it("Durations segments start at 0 and show the Custom Era's counts", () => {
+    renderAt(Date.UTC(2057, 2, 3), RELATIVE);
+    assert.equal(seg("year").value, "57");
+    assert.equal(seg("month").value, "02");
+    assert.equal(seg("day").value, "02");
+    const month = seg("month");
+    act(() => month.focus());
+    press(month, "Backspace");
+    assert.equal(emitted[0], Date.UTC(2057, 0, 3), "month resets to 0, not 1");
   });
 });

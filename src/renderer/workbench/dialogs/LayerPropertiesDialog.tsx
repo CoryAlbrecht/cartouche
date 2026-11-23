@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-21
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -102,6 +102,11 @@ export {
   type UseRawStyleTextEditorHistoryResult,
 } from "./StyleEditor";
 import { UndrawableCrsAlert } from "./UndrawableCrsAlert";
+import { timeReckoningSignal } from "@renderer/state/timeFilterSignals";
+import {
+  isTimeFilterFieldEligible,
+  temporalFieldsSuitReckoning,
+} from "@renderer/map/temporalPredicate";
 
 /**
  * Names of well-known CRSs keyed by upper-cased `AUTH:code`, used to label the current CRS while the CRS Catalogue is still building.
@@ -632,7 +637,7 @@ function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-21
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1430,12 +1435,22 @@ export const LayerPropertiesDialog: React.FC = () => {
                   };
                   const isStartDisabled = temporalConfig.mode === "end";
                   const isEndDisabled = temporalConfig.mode === "start";
+                  // Plain Number offers numeric and date fields; every other Time Reckoning date fields only (ADR 0038 §4).
+                  const reckoningKind = timeReckoningSignal.value.kind;
                   const temporalFields = layerFields.filter(
                     (f) =>
-                      f.inferredType === "date"
-                      || f.inferredType === "time"
-                      || f.inferredType === "datetime"
+                      isTimeFilterFieldEligible(f.inferredType, reckoningKind)
+                      // A configured field stays listed so the warning below can point at it.
+                      || f.name === temporalConfig.startField
+                      || f.name === temporalConfig.endField
                   );
+                  const fieldsMismatch =
+                    isEnabled
+                    && !temporalFieldsSuitReckoning(
+                      temporalConfig,
+                      layerFields,
+                      reckoningKind
+                    );
                   const temporalFieldOptions: SelectOption[] = [
                     { value: "", label: "—" },
                     ...temporalFields.map((f) => ({
@@ -1655,6 +1670,13 @@ export const LayerPropertiesDialog: React.FC = () => {
                           />
                         </div>
                       </div>
+                      {fieldsMismatch && (
+                        <p
+                          className='layer-prop-time-reckoning-warning'
+                          role='status'>
+                          {t("layer_properties_time_field_mismatch")}
+                        </p>
+                      )}
                     </div>
                   );
                 })()}

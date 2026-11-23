@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, the Information and Fields tab fields tables embedded as TableWidgets, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-17
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -792,6 +792,52 @@ describe("LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)",
     assert(
       !html.includes("flag (boolean)"),
       "Should not include boolean field in temporal options"
+    );
+  });
+
+  it("offers numeric and date fields in Plain Number, and warns when configured fields don't suit the Time Reckoning (Ticket #397)", async () => {
+    const { timeReckoningSignal, resetTimeFilterState } = jiti(
+      "../../../src/renderer/state/timeFilterSignals.ts"
+    );
+    const layer: ProjectLayerItem = {
+      id: "layer-plain-number",
+      name: "Plain Number Test Layer",
+      type: "vector",
+      source: "test.shp",
+      visible: true,
+      temporal: { enabled: true, mode: "start", startField: "pop" },
+      fields: [
+        { name: "name", nativeType: "String", inferredType: "string" },
+        { name: "pop", nativeType: "Integer", inferredType: "integer" },
+        { name: "area", nativeType: "Real", inferredType: "real" },
+        { name: "survey_date", nativeType: "Date", inferredType: "date" },
+      ],
+    };
+    projectLayersSignal.value = [layer];
+    projectTreeSignal.value = [layer];
+    timeReckoningSignal.value = {
+      ...timeReckoningSignal.value,
+      kind: "number",
+    };
+
+    await openLayerPropertiesDialog("layer-plain-number");
+    activeLayerPropertiesTabSignal.value = "time_filter";
+    let html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(html.includes("pop (integer)"), "numeric field offered");
+    assert(html.includes("area (real)"), "real field offered");
+    assert(html.includes("survey_date (date)"), "date field offered");
+    assert(!html.includes("name (string)"), "string field not offered");
+    assert(
+      !html.includes("layer-prop-time-reckoning-warning"),
+      "no warning when the fields suit"
+    );
+
+    resetTimeFilterState();
+    html = renderToStaticMarkup(React.createElement(LayerPropertiesDialog));
+    assert(!html.includes("area (real)"), "Gregorian offers date fields only");
+    assert(
+      html.includes("layer-prop-time-reckoning-warning"),
+      "warns about the configured numeric field"
     );
   });
 

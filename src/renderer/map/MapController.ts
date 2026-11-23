@@ -4,14 +4,14 @@
  * @description Isolated imperative OpenLayers map controller managing map lifecycle, spatial viewports, vector layers, OGC WKB streaming queries, and reactive signal synchronization.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link OlMap}
  * @see {@link VectorImageLayer}
  * @see {@link VectorSource}
  */
 
-import { effect } from "@preact/signals-react";
+import { effect, untracked } from "@preact/signals-react";
 import { logging } from "../../shared/logging";
 import OlMap from "ol/Map.js";
 import { unByKey } from "ol/Observable.js";
@@ -56,7 +56,9 @@ import {
 import {
   ALWAYS_DISPLAYED,
   createFeatureDisplayPredicate,
+  temporalFieldsSuitReckoning,
   type FeatureDisplayPredicate,
+  type TemporalFilterConfig,
 } from "./temporalPredicate";
 import { removeHiddenFromSelection } from "./timeFilteredSelection";
 import type { VertexEditTarget } from "./vertexEditing";
@@ -90,6 +92,7 @@ import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
   timeFilterFrameEndSignal,
+  timeReckoningSignal,
 } from "../state/timeFilterSignals";
 import { preferencesMapSignal } from "../state/preferencesSignals";
 import {
@@ -213,12 +216,12 @@ export function flattenTreeLayers(
  * @property {unknown} [activeRawStyle] - Most recently applied raw style descriptor or wrapper.
  * @property {number} [styleRevision] - Monotonic counter guarding out-of-order async style compilations/reloads.
  * @property {Record<string, InferredFieldType>} [fieldSchema] - Dictionary of attribute names to canonical inferred field types for lazy deserialization.
- * @property {LayerTemporalConfig} [activeTemporalConfig] - Most recently compiled dynamic temporal configuration.
+ * @property {TemporalFilterConfig} [activeTemporalConfig] - Most recently compiled dynamic temporal configuration, with its fields' inferred types.
  * @property {FeatureDisplayPredicate} [isDisplayed] - Whether a feature is displayed now under the Time Filter, built from `activeTemporalConfig` with {@link createFeatureDisplayPredicate} (the predicate the layer's style uses); the Selection Tools and Vertex Markers skip features it rejects.
  * @property {boolean} [hasGradientFill] - True if the layer currently utilizes an active screen-anchored gradient fill style.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-20
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
 export interface VectorLayerEntry {
@@ -229,7 +232,7 @@ export interface VectorLayerEntry {
   loadsFullExtent: boolean;
   allFieldsLoaded?: boolean;
   activeRawStyle?: unknown;
-  activeTemporalConfig?: LayerTemporalConfig;
+  activeTemporalConfig?: TemporalFilterConfig;
   isDisplayed?: FeatureDisplayPredicate;
   styleRevision?: number;
   fieldSchema?: Record<string, InferredFieldType>;
@@ -571,7 +574,7 @@ export class MapController {
    * @description Binds reactive signal listeners for project layers, map navigation actions and the active map tool (which drives the map interactions through MapToolInteractions).
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-20
+   * @updated 2026-11-23
    * @since 0.1.0-dev
    * @private
    * @returns {void}
@@ -672,6 +675,21 @@ export class MapController {
       this.removeTimeFilteredSelection();
     });
     this.disposeSignals.push(disposeTimeFilter);
+
+    // A Time Reckoning change re-reads feature values (Plain Number reads numeric strings as numbers) and re-judges which
+    // layers' Time Filter fields suit it; layers whose fields don't become Undated Features (ADR 0038 §4)
+    let lastReckoning = timeReckoningSignal.peek().kind;
+    const disposeTimeReckoning = effect(() => {
+      const reckoning = timeReckoningSignal.value.kind;
+      if (reckoning === lastReckoning) return;
+      lastReckoning = reckoning;
+      untracked(() => {
+        this.applyLayerStyles({});
+        this.refreshTemporalLayers();
+        this.removeTimeFilteredSelection();
+      });
+    });
+    this.disposeSignals.push(disposeTimeReckoning);
 
     // Drive map interactions (navigation gestures, Selection Tool handlers) from the active map tool
     const toolInteractions = new MapToolInteractions({
@@ -1068,11 +1086,7 @@ export class MapController {
     for (const [id, entry] of this.vectorLayers.entries()) {
       const rawStyle =
         styles[id] !== undefined ? styles[id] : entry.activeRawStyle;
-      const temporalConfig =
-        entry.descriptor.temporal
-        ?? (entry.descriptor.temporalEnabled ?
-          { enabled: true, mode: "start_end" as const }
-        : undefined);
+      const temporalConfig = this.effectiveTemporalConfig(entry.descriptor);
       const prevTemporalJson = JSON.stringify(
         entry.activeTemporalConfig ?? null
       );
@@ -1088,6 +1102,48 @@ export class MapController {
         this.removeTimeFilteredSelection();
       }
     }
+  }
+
+  /**
+   * A layer whose configured Time Filter fields don't suit the project's Time Reckoning gets no temporal configuration, so
+   * its features are Undated Features, always shown (ADR 0038 §4). The inferred types of the fields it uses go with it, so
+   * a date field is always read as a date, even in Plain Number.
+   * @description The temporal configuration a layer's style and display predicate use: its own with its fields' inferred types, or none when its fields don't suit the Time Reckoning.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-22
+   * @updated 2026-11-23
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor} descriptor - Layer descriptor.
+   * @returns {TemporalFilterConfig | undefined} Effective temporal configuration.
+   */
+  private effectiveTemporalConfig(
+    descriptor: LayerDescriptor
+  ): TemporalFilterConfig | undefined {
+    const config: LayerTemporalConfig | undefined =
+      descriptor.temporal
+      ?? (descriptor.temporalEnabled ?
+        { enabled: true, mode: "start_end" as const }
+      : undefined);
+    if (
+      config?.enabled
+      && !temporalFieldsSuitReckoning(
+        config,
+        descriptor.fields,
+        timeReckoningSignal.peek().kind
+      )
+    ) {
+      return undefined;
+    }
+    if (!config) return undefined;
+    const fieldTypes: Record<string, InferredFieldType> = {};
+    for (const name of [config.startField, config.endField]) {
+      const type =
+        name && descriptor.fields?.find((f) => f.name === name)?.inferredType;
+      if (name && type) fieldTypes[name] = type;
+    }
+    return Object.keys(fieldTypes).length > 0 ?
+        { ...config, fieldTypes }
+      : config;
   }
 
   /**
@@ -1190,11 +1246,7 @@ export class MapController {
 
     const sharedStyles = currentProjectSignal.value?.styles;
     const isCartouche = isCartoucheStyleDescriptor(rawStyle, sharedStyles);
-    const temporalConfig =
-      entry.descriptor.temporal
-      ?? (entry.descriptor.temporalEnabled ?
-        { enabled: true, mode: "start_end" as const }
-      : undefined);
+    const temporalConfig = this.effectiveTemporalConfig(entry.descriptor);
     entry.activeTemporalConfig =
       temporalConfig ? { ...temporalConfig } : undefined;
     entry.isDisplayed = createFeatureDisplayPredicate(

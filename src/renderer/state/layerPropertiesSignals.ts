@@ -4,7 +4,7 @@
  * @description Reactive Preact signals and state management for LayerPropertiesDialog singleton window lifecycle, tab transitions, live OGR metadata hydration, and transactional editing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-21
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -50,6 +50,7 @@ import {
   timeFilterFrameEndSignal,
   timeFilterStepSignal,
   timeFilterUnitSignal,
+  timeReckoningSignal,
 } from "./timeFilterSignals";
 import {
   autoDetectTemporalRange,
@@ -751,7 +752,7 @@ export function updateLayerPropertiesInTree(
  * @description Commits active draft modifications (name, ID, CRS, filter, temporalEnabled, style, opacity, fields) to the authoritative layer and registers re-keyed identifier across main and renderer processes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-24
- * @updated 2026-11-21
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if changes were successfully committed.
  */
@@ -923,7 +924,13 @@ export async function applyLayerPropertiesEdits(): Promise<boolean> {
         ) {
           const s = timeFilterStepSignal.value;
           const u = timeFilterUnitSignal.value;
-          const nextEnd = computeFrameEnd(range.from, s, u, range.to);
+          const nextEnd = computeFrameEnd(
+            range.from,
+            s,
+            u,
+            range.to,
+            timeReckoningSignal.value
+          );
           setTimeFilterFrame(range.from, nextEnd);
         }
       }
