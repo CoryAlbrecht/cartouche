@@ -4,7 +4,7 @@
  * @description Discrete, segmented numeric input component providing non-cascading calendar date and timestamp editing strictly in UTC epoch milliseconds.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link TimestampSpinner}
  * @see {@link UtcTimestampParts}
@@ -16,10 +16,15 @@
  * @see {@link setSegmentValue}
  * @see {@link adjustSegmentValue}
  * @see {@link formatUtcTimestamp}
+ * @see {@link usePendingDigits}
  */
 
-import React, { useState, useRef, useEffect, type JSX } from "react";
+import React, { useState, useRef, type JSX } from "react";
 import Icon from "@renderer/components/common/Icon";
+import {
+  usePendingDigits,
+  type PendingDigits,
+} from "@renderer/hooks/usePendingDigits";
 import { mdiChevronUp, mdiChevronDown } from "@mdi/js";
 
 /**
@@ -91,14 +96,45 @@ export interface TimestampSpinnerProps {
  * @description Computes the authoritative number of days in a given UTC month and year, dynamically accounting for leap years.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {number} year - Four-digit calendar year.
  * @param {number} month - One-based calendar month (1 to 12).
  * @returns {number} The maximum number of calendar days in the specified month (28, 29, 30, or 31).
  */
 export function getDaysInMonthUtc(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return new Date(utcCalendarMs(year, month + 1, 0, 0, 0, 0)).getUTCDate();
+}
+
+/**
+ * Unlike `Date.UTC`, which reads years 0–99 as 1900–1999, this sets the full year as given.
+ * Out-of-range month and day values roll over exactly as they do in `Date.UTC`.
+ * @function utcCalendarMs
+ * @description Converts proleptic Gregorian UTC calendar parts to epoch milliseconds without the two-digit-year mapping.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {number} year - Full calendar year (0 is 1 BCE).
+ * @param {number} month - One-based calendar month.
+ * @param {number} day - One-based day of the month (0 is the last day of the previous month).
+ * @param {number} hour - UTC hour.
+ * @param {number} minute - UTC minute.
+ * @param {number} second - UTC second.
+ * @returns {number} UTC epoch milliseconds.
+ */
+function utcCalendarMs(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number
+): number {
+  const d = new Date(0);
+  d.setUTCFullYear(year, month - 1, day);
+  d.setUTCHours(hour, minute, second, 0);
+  return d.getTime();
 }
 
 /**
@@ -142,7 +178,7 @@ export function parseUtcTimestamp(
  * @description Assembles discrete calendar parts into a UTC epoch millisecond timestamp, clamping values without cascading rolls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {UtcTimestampParts} parts - Discrete calendar components.
  * @returns {number} UTC epoch milliseconds.
@@ -156,7 +192,7 @@ export function buildUtcTimestamp(parts: UtcTimestampParts): number {
   const minute = Math.max(0, Math.min(59, Math.trunc(parts.minute)));
   const second = Math.max(0, Math.min(59, Math.trunc(parts.second)));
 
-  return Date.UTC(year, month - 1, day, hour, minute, second);
+  return utcCalendarMs(year, month, day, hour, minute, second);
 }
 
 /**
@@ -276,10 +312,10 @@ const SPINNER_BUTTON_BASE_STYLE: React.CSSProperties = {
 
 /**
  * @component TimestampSpinner
- * @description Discrete non-cascading segmented UTC timestamp spinner component.
+ * @description Discrete non-cascading segmented UTC timestamp spinner component. Typed digits show as typed and are checked, limited and saved (firing `onChange`) only after a 1000 ms pause or on Tab, an arrow key, Enter or blur; Escape discards them. Only a full two-digit segment auto-advances.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {TimestampSpinnerProps} props - Component properties.
  * @returns {JSX.Element} The rendered timestamp spinner component.
@@ -297,8 +333,29 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
   const [focusedSegment, setFocusedSegment] =
     useState<TimestampSegmentType | null>(null);
   const lastActiveSegmentRef = useRef<TimestampSegmentType>("second");
-  const typingBufferRef = useRef<string>("");
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * @function applyTypedDigits
+   * @description Checks and limits digits typed into one segment against the saved value, without carrying into neighbouring segments.
+   * @param {UtcTimestampParts} base - Saved calendar parts.
+   * @param {PendingDigits<TimestampSegmentType> | null} typed - Unsaved digits, if any.
+   * @returns {UtcTimestampParts} Parts with the typed segment applied.
+   */
+  const applyTypedDigits = (
+    base: UtcTimestampParts,
+    typed: PendingDigits<TimestampSegmentType> | null
+  ): UtcTimestampParts =>
+    typed && typed.digits.length > 0 ?
+      setSegmentValue(base, typed.key, parseInt(typed.digits, 10))
+    : base;
+
+  const typing = usePendingDigits<TimestampSegmentType>((key, digits) => {
+    onChange(
+      buildUtcTimestamp(
+        applyTypedDigits(parseUtcTimestamp(value), { key, digits })
+      )
+    );
+  });
 
   const yearInputRef = useRef<HTMLInputElement | null>(null);
   const monthInputRef = useRef<HTMLInputElement | null>(null);
@@ -308,15 +365,6 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
   const secondInputRef = useRef<HTMLInputElement | null>(null);
 
   const parts = parseUtcTimestamp(value);
-
-  // Clear typing timer on unmount
-  useEffect(() => {
-    return () => {
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-      }
-    };
-  }, []);
 
   const getSegmentInputRef = (
     seg: TimestampSegmentType
@@ -368,7 +416,11 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     if (disabled) return;
     const targetSegment =
       explicitSegment ?? focusedSegment ?? lastActiveSegmentRef.current;
-    const currentParts = parseUtcTimestamp(value);
+    // Unsaved digits are saved first, and the step applies on top of them.
+    const currentParts = applyTypedDigits(
+      parseUtcTimestamp(value),
+      typing.take()
+    );
     const updatedParts = adjustSegmentValue(currentParts, targetSegment, delta);
     onChange(buildUtcTimestamp(updatedParts));
   };
@@ -379,13 +431,12 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
   ) => {
     setFocusedSegment(seg);
     lastActiveSegmentRef.current = seg;
-    typingBufferRef.current = "";
     e.target.select();
   };
 
   const handleSegmentBlur = () => {
+    typing.commit();
     setFocusedSegment(null);
-    typingBufferRef.current = "";
   };
 
   const handleSegmentKeyDown = (
@@ -410,19 +461,36 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
 
     if (e.key === "ArrowLeft") {
       e.preventDefault();
+      typing.commit();
       focusPrevSegment(seg);
       return;
     }
 
     if (e.key === "ArrowRight") {
       e.preventDefault();
+      typing.commit();
       focusNextSegment(seg);
+      return;
+    }
+
+    // Tab keeps its default focus move; Enter only saves.
+    if (e.key === "Tab" || e.key === "Enter") {
+      typing.commit();
+      return;
+    }
+
+    // Escape only throws unsaved digits away; with none it is left alone.
+    if (e.key === "Escape") {
+      if (typing.discard()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
 
     if (e.key === "Backspace") {
       e.preventDefault();
-      typingBufferRef.current = "";
+      typing.discard();
       const minVal = seg === "month" || seg === "day" ? 1 : 0;
       const currentParts = parseUtcTimestamp(value);
       const nextParts = setSegmentValue(currentParts, seg, minVal);
@@ -430,41 +498,15 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       return;
     }
 
-    // Direct numeric typing
+    // Direct numeric typing: held as typed until a pause or a commit key.
     if (e.key >= "0" && e.key <= "9") {
       e.preventDefault();
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-      }
-      typingTimerRef.current = setTimeout(() => {
-        typingBufferRef.current = "";
-      }, 1200);
-
       const maxLen = seg === "year" ? 4 : 2;
-      let nextBuffer = typingBufferRef.current + e.key;
-      if (nextBuffer.length > maxLen) {
-        nextBuffer = e.key;
-      }
-      typingBufferRef.current = nextBuffer;
+      const digits = typing.append(seg, e.key, maxLen);
 
-      const typedNumber = parseInt(nextBuffer, 10);
-      const currentParts = parseUtcTimestamp(value);
-      const nextParts = setSegmentValue(currentParts, seg, typedNumber);
-
-      onChange(buildUtcTimestamp(nextParts));
-
-      // Auto-advance heuristics
-      let shouldAdvance = nextBuffer.length >= maxLen;
-      if (!shouldAdvance && nextBuffer.length === 1) {
-        if (seg === "month" && typedNumber >= 2) shouldAdvance = true;
-        if (seg === "day" && typedNumber >= 4) shouldAdvance = true;
-        if (seg === "hour" && typedNumber >= 3) shouldAdvance = true;
-        if ((seg === "minute" || seg === "second") && typedNumber >= 6)
-          shouldAdvance = true;
-      }
-
-      if (shouldAdvance) {
-        typingBufferRef.current = "";
+      // Only a full two-digit segment moves on by itself; never the year.
+      if (seg !== "year" && digits.length === maxLen) {
+        typing.commit();
         focusNextSegment(seg);
       }
     }
@@ -474,17 +516,17 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     seg: TimestampSegmentType,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const rawDigits = e.target.value.replace(/\D/g, "");
-    const currentParts = parseUtcTimestamp(value);
+    // Pasted or IME text becomes unsaved digits, checked on the next commit.
     const maxLen = seg === "year" ? 4 : 2;
-    const currentValStr = String(currentParts[seg]).padStart(maxLen, "0");
-    if (rawDigits.length === 0 || rawDigits === currentValStr) return;
+    const rawDigits = e.target.value.replace(/\D/g, "").slice(-maxLen);
+    const shown =
+      typing.pending?.key === seg ?
+        typing.pending.digits
+      : String(parseUtcTimestamp(value)[seg]).padStart(maxLen, "0");
+    if (rawDigits.length === 0 || rawDigits === shown) return;
 
-    const num = parseInt(rawDigits, 10);
-    if (!Number.isNaN(num)) {
-      const nextParts = setSegmentValue(currentParts, seg, num);
-      onChange(buildUtcTimestamp(nextParts));
-    }
+    typing.take();
+    for (const ch of rawDigits) typing.append(seg, ch, maxLen);
   };
 
   const renderSegmentInput = (
@@ -495,7 +537,10 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
     label: string
   ) => {
     const isFocused = focusedSegment === seg;
-    const displayVal = String(val).padStart(len, "0");
+    const displayVal =
+      typing.pending?.key === seg ?
+        typing.pending.digits
+      : String(val).padStart(len, "0");
 
     return (
       <input
