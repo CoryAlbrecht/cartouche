@@ -76,6 +76,7 @@ const {
   setTimeFilterRange,
   setTimeFilterStep,
   resetTimeFilterState,
+  setTimeReckoning,
 } = jiti(
   "@renderer/state/timeFilterSignals"
 ) as typeof import("@renderer/state/timeFilterSignals");
@@ -219,7 +220,7 @@ describe("TimeFilterWidget: Component Rendering (Ticket #235)", () => {
     );
 
     // Verify Current Frame formatted with pipe separator
-    const expectedFrame = `${formatUtcTimestamp(timeFilterFrameStartSignal.value)} | ${formatUtcTimestamp(timeFilterFrameEndSignal.value)}`;
+    const expectedFrame = `${formatUtcTimestamp(timeFilterFrameStartSignal.value)} CE | ${formatUtcTimestamp(timeFilterFrameEndSignal.value)} CE`;
     assert.ok(
       markup.includes(expectedFrame),
       `Markup must include formatted current frame: ${expectedFrame}`
@@ -750,7 +751,7 @@ describe("TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket 
       "Formatted timestamp must have class time-filter-current-frame-label"
     );
     assert.ok(
-      markup.includes("2026-01-01 00:00:00 | 2026-01-01 12:00:00"),
+      markup.includes("2026-01-01 00:00:00 CE | 2026-01-01 12:00:00 CE"),
       "Must render formatted start and end timestamps"
     );
     assert.equal(
@@ -1327,7 +1328,7 @@ describe("TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket 
       React.createElement(TimeFilterWidget, {})
     );
 
-    const expectedLabel = `${formatUtcTimestamp(startMs)} | ${formatUtcTimestamp(endMs)}`;
+    const expectedLabel = `${formatUtcTimestamp(startMs)} CE | ${formatUtcTimestamp(endMs)} CE`;
     assert.ok(
       markup.includes(expectedLabel),
       `Rendered markup must contain discrete frame interval "${expectedLabel}"`
@@ -2274,5 +2275,56 @@ describe("TimeFilterWidget: Project Dirty State on Range, Slider, and Transport 
       false,
       "Direct programmatic signal updates must not transition Project Dirty State"
     );
+  });
+});
+
+describe("TimeFilterWidget: Time Reckoning (Ticket #397)", () => {
+  afterEach(() => {
+    resetTimeFilterState();
+  });
+
+  it("shows the Current Frame and slider value text in a Custom Era", () => {
+    setTimeReckoning({
+      reckoning: "custom",
+      zeroTime: Date.UTC(2000, 0, 1),
+      eraLabelAfter: "+",
+      eraLabelBefore: "−",
+      eraLabelPosition: "prefix",
+      eraCounting: "durations",
+    });
+    setTimeFilterRange(Date.UTC(1999, 0, 1), Date.UTC(2060, 0, 1));
+    setTimeFilterFrame(Date.UTC(2057, 2, 3), Date.UTC(2057, 2, 4));
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(
+      markup.includes("+57-02-02 00:00:00 | +57-02-03 00:00:00"),
+      "Current Frame in the Custom Era"
+    );
+    assert.ok(
+      markup.includes('aria-valuetext="+57-02-02 00:00:00"'),
+      "slider value text in the Custom Era"
+    );
+    assert.equal((markup.match(/data-segment="era"/g) ?? []).length, 2);
+  });
+
+  it("shows plain numbers and number spinners in Plain Number", () => {
+    setTimeReckoning({
+      reckoning: "number",
+      zeroTime: 0,
+      eraLabelAfter: "+",
+      eraLabelBefore: "−",
+      eraLabelPosition: "prefix",
+      eraCounting: "durations",
+    });
+    setTimeFilterRange(-10, 100);
+    setTimeFilterStep(0.5, "Days");
+    setTimeFilterFrame(2.5, 3);
+    const markup = renderToStaticMarkup(
+      React.createElement(TimeFilterWidget, {})
+    );
+    assert.ok(markup.includes("2.5 | 3"), "Current Frame as plain numbers");
+    assert.ok(markup.includes('step="0.5"'), "slider steps by Step");
+    assert.equal((markup.match(/plain-number-spinner-input/g) ?? []).length, 2);
   });
 });

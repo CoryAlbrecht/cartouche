@@ -396,6 +396,45 @@ describe("ProjectPropertiesDialog component (Ticket #271)", () => {
     activeProjectPropertiesTabSignal.value = "general";
   });
 
+  it("Time Filter tab shows the draft's Time Reckoning, and From / To in it (Ticket #397)", () => {
+    openProjectPropertiesDialog();
+    activeProjectPropertiesTabSignal.value = "time_filter";
+    let html = render();
+    assert.ok(
+      html.includes('id="time-reckoning-kind"'),
+      "Time Reckoning dropdown"
+    );
+    assert.ok(
+      html.includes('<option value="gregory" selected=""'),
+      "Gregorian by default"
+    );
+    assert.ok(
+      html.includes("time-reckoning-era-fields is-preset"),
+      "preset Era read-only"
+    );
+
+    updateProjectPropertiesDraft({
+      timeReckoning: {
+        reckoning: "number",
+        zeroTime: 0,
+        eraLabelAfter: "+",
+        eraLabelBefore: "−",
+        eraLabelPosition: "prefix",
+        eraCounting: "durations",
+      },
+    });
+    html = render();
+    assert.ok(
+      !html.includes("time-reckoning-era-fields"),
+      "Plain Number hides the Era"
+    );
+    assert.ok(
+      html.includes("plain-number-spinner-input"),
+      "From / To as plain numbers"
+    );
+    activeProjectPropertiesTabSignal.value = "general";
+  });
+
   it("Default Styles tab: checkboxes checked with no default, unchecking seeds an editor, Apply stores and Cancel discards (Ticket #282)", async () => {
     openProjectPropertiesDialog();
     activeProjectPropertiesTabSignal.value = "default_styles";

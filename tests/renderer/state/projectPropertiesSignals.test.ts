@@ -4,7 +4,7 @@
  * @description Tests for the Project Properties draft store (ADR 0024): opening seeds the draft from the committed state, edits stay in the draft, Apply commits through one IPC round trip and sets the Project Dirty State, Cancel/Close roll back, the draft survives tab switches, and the Workbench window title falls back to the project file's base name when the title is empty.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-15
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
@@ -65,6 +65,7 @@ const {
   setTimeFilterFrame,
   setTimeFilterStep,
   resetTimeFilterState,
+  timeReckoningSignal,
 } = jiti("../../../src/renderer/state/timeFilterSignals.ts");
 const { resolveProjectDisplayName, isDefaultProjectTitle } = jiti(
   "../../../src/shared/project/projectTitle.ts"
@@ -453,8 +454,49 @@ describe("projectPropertiesSignals draft store (Ticket #271)", () => {
       to: 8000,
       step: 3,
       unit: "Minutes",
+      reckoning: "gregory",
+      zeroTime: -62135596800000,
+      eraLabelAfter: "CE",
+      eraLabelBefore: "BCE",
+      eraLabelPosition: "suffix",
+      eraCounting: "dates",
     });
     assert.equal(isProjectDirtySignal.value, true);
+    resetTimeFilterState();
+  });
+
+  it("edits the Time Reckoning in the draft and commits it on Apply without changing stored values (Ticket #397)", async () => {
+    resetTimeFilterState();
+    setTimeFilterRange(1000, 9000);
+    setTimeFilterFrame(4000, 5000);
+    openProjectPropertiesDialog();
+    assert.equal(
+      projectPropertiesDraftSignal.value.timeReckoning.reckoning,
+      "gregory"
+    );
+    const custom = {
+      reckoning: "custom",
+      zeroTime: 123,
+      eraLabelAfter: "AF",
+      eraLabelBefore: "BF",
+      eraLabelPosition: "prefix",
+      eraCounting: "durations",
+    };
+    updateProjectPropertiesDraft({ timeReckoning: custom });
+    assert.equal(
+      timeReckoningSignal.value.reckoning,
+      "gregory",
+      "untouched before Apply"
+    );
+
+    assert.equal(await applyProjectPropertiesEdits(), true);
+    assert.deepEqual(timeReckoningSignal.value, custom);
+    assert.equal(timeFilterRangeStartSignal.value, 1000, "From unchanged");
+    assert.equal(timeFilterRangeEndSignal.value, 9000, "To unchanged");
+    assert.equal(timeFilterFrameStartSignal.value, 4000, "frame unchanged");
+    assert.equal(currentProjectSignal.value.timeFilter.reckoning, "custom");
+    assert.equal(currentProjectSignal.value.timeFilter.eraLabelAfter, "AF");
+    assert.equal(currentProjectSignal.value.timeFilter.from, 1000);
     resetTimeFilterState();
   });
 

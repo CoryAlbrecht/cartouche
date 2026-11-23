@@ -2701,6 +2701,84 @@
   width: 2.85rem;
 }
 
+/* Years run to six digits (the Temporal range) and Era Labels vary in length:
+   both fields grow with their text (Ticket #397). */
+.timestamp-spinner-segment-year,
+.timestamp-spinner-segment-era,
+.plain-number-spinner-input {
+  field-sizing: content;
+}
+
+.timestamp-spinner-segment-era {
+  width: auto;
+  min-width: 1.65rem;
+  cursor: default;
+}
+
+/* Plain Number spinner: one number field in the Timestamp Spinner frame. */
+.plain-number-spinner-input {
+  width: auto;
+  min-width: 6rem;
+  text-align: right;
+}
+
+/* Project Properties Time Filter tab: Time Reckoning dropdown and Era fields
+   (Ticket #397). A preset Calendar's Era shows disabled (dimmed). */
+.time-reckoning-controls,
+.time-reckoning-era-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.time-reckoning-controls {
+  margin-bottom: 0.75rem;
+}
+
+.time-reckoning-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-reckoning-field-label {
+  font-size: 1rem;
+  user-select: none;
+}
+
+.time-reckoning-label-input {
+  box-sizing: border-box;
+  width: 6rem;
+  padding: 0.1rem 0.35rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.2rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-size: 1rem;
+}
+
+.time-reckoning-label-input:disabled {
+  background-color: var(--cartouche-input-readonly-bg);
+  cursor: not-allowed;
+}
+
+.time-reckoning-era-fields.is-preset {
+  opacity: 0.6;
+}
+
+/* Layer Properties Time Filter tab: the configured fields don't suit the
+   project's Time Reckoning, so the layer's features are Undated Features. */
+.layer-prop-time-reckoning-warning {
+  margin: 0;
+  padding: 0.375rem 0.625rem;
+  border: 0.0625rem solid var(--cartouche-layer-prop-time-warning-border);
+  border-radius: 0.25rem;
+  background-color: var(--cartouche-layer-prop-time-warning-bg);
+  color: var(--cartouche-layer-prop-time-warning-fg);
+  font-size: 1rem;
+}
+
 .timestamp-spinner-segment.is-focused {
   background-color: var(--cartouche-timestamp-segment-active-bg);
 }

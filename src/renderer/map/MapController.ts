@@ -11,7 +11,7 @@
  * @see {@link VectorSource}
  */
 
-import { effect } from "@preact/signals-react";
+import { effect, untracked } from "@preact/signals-react";
 import { logging } from "../../shared/logging";
 import OlMap from "ol/Map.js";
 import { unByKey } from "ol/Observable.js";
@@ -56,6 +56,7 @@ import {
 import {
   ALWAYS_DISPLAYED,
   createFeatureDisplayPredicate,
+  temporalFieldsSuitReckoning,
   type FeatureDisplayPredicate,
 } from "./temporalPredicate";
 import { removeHiddenFromSelection } from "./timeFilteredSelection";
@@ -90,6 +91,7 @@ import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
   timeFilterFrameEndSignal,
+  timeReckoningSignal,
 } from "../state/timeFilterSignals";
 import { preferencesMapSignal } from "../state/preferencesSignals";
 import {
@@ -673,6 +675,21 @@ export class MapController {
     });
     this.disposeSignals.push(disposeTimeFilter);
 
+    // A Time Reckoning change re-reads feature values (Plain Number reads numeric strings as numbers) and re-judges which
+    // layers' Time Filter fields suit it; layers whose fields don't become Undated Features (ADR 0038 §4)
+    let lastReckoning = timeReckoningSignal.peek().reckoning;
+    const disposeTimeReckoning = effect(() => {
+      const reckoning = timeReckoningSignal.value.reckoning;
+      if (reckoning === lastReckoning) return;
+      lastReckoning = reckoning;
+      untracked(() => {
+        this.applyLayerStyles({});
+        this.refreshTemporalLayers();
+        this.removeTimeFilteredSelection();
+      });
+    });
+    this.disposeSignals.push(disposeTimeReckoning);
+
     // Drive map interactions (navigation gestures, Selection Tool handlers) from the active map tool
     const toolInteractions = new MapToolInteractions({
       map: this.map,
@@ -1068,11 +1085,7 @@ export class MapController {
     for (const [id, entry] of this.vectorLayers.entries()) {
       const rawStyle =
         styles[id] !== undefined ? styles[id] : entry.activeRawStyle;
-      const temporalConfig =
-        entry.descriptor.temporal
-        ?? (entry.descriptor.temporalEnabled ?
-          { enabled: true, mode: "start_end" as const }
-        : undefined);
+      const temporalConfig = this.effectiveTemporalConfig(entry.descriptor);
       const prevTemporalJson = JSON.stringify(
         entry.activeTemporalConfig ?? null
       );
@@ -1088,6 +1101,38 @@ export class MapController {
         this.removeTimeFilteredSelection();
       }
     }
+  }
+
+  /**
+   * A layer whose configured Time Filter fields don't suit the project's Time Reckoning gets no temporal configuration, so
+   * its features are Undated Features, always shown (ADR 0038 §4).
+   * @description The temporal configuration a layer's style and display predicate use: its own, or none when its fields don't suit the Time Reckoning.
+   * @author Cory Albrecht <cory@albrecht.name>
+   * @date 2026-11-22
+   * @updated 2026-11-22
+   * @since 0.1.0-dev
+   * @param {LayerDescriptor} descriptor - Layer descriptor.
+   * @returns {LayerTemporalConfig | undefined} Effective temporal configuration.
+   */
+  private effectiveTemporalConfig(
+    descriptor: LayerDescriptor
+  ): LayerTemporalConfig | undefined {
+    const config: LayerTemporalConfig | undefined =
+      descriptor.temporal
+      ?? (descriptor.temporalEnabled ?
+        { enabled: true, mode: "start_end" as const }
+      : undefined);
+    if (
+      config?.enabled
+      && !temporalFieldsSuitReckoning(
+        config,
+        descriptor.fields,
+        timeReckoningSignal.peek().reckoning
+      )
+    ) {
+      return undefined;
+    }
+    return config;
   }
 
   /**
@@ -1190,11 +1235,7 @@ export class MapController {
 
     const sharedStyles = currentProjectSignal.value?.styles;
     const isCartouche = isCartoucheStyleDescriptor(rawStyle, sharedStyles);
-    const temporalConfig =
-      entry.descriptor.temporal
-      ?? (entry.descriptor.temporalEnabled ?
-        { enabled: true, mode: "start_end" as const }
-      : undefined);
+    const temporalConfig = this.effectiveTemporalConfig(entry.descriptor);
     entry.activeTemporalConfig =
       temporalConfig ? { ...temporalConfig } : undefined;
     entry.isDisplayed = createFeatureDisplayPredicate(

@@ -81,7 +81,10 @@ import {
   setTimeFilterRange,
   setTimeFilterStep,
   resetTimeFilterState,
+  timeReckoningSignal,
+  setTimeReckoning,
 } from "./timeFilterSignals";
+import { timeReckoningFromConfig } from "../../shared/time/reckonedTime";
 import {
   autoDetectTemporalRange,
   computeFrameEnd,
@@ -2141,7 +2144,7 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-21
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
@@ -2221,6 +2224,8 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
 
     if (project.timeFilter) {
       const tf = project.timeFilter;
+      // The Time Reckoning first, so the frame below is stepped in it (ADR 0038)
+      setTimeReckoning(timeReckoningFromConfig(tf));
       setTimeFilterActive(tf.enabled === true);
       const isRangeUninitialized =
         tf.from === undefined
@@ -2401,7 +2406,7 @@ function adoptFileNameForDefaultTitle(savedPath: string): void {
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2440,6 +2445,7 @@ export async function saveProjectAction(): Promise<boolean> {
       current: timeFilterFrameStartSignal.value,
       step: timeFilterStepSignal.value,
       unit: timeFilterUnitSignal.value,
+      ...timeReckoningSignal.value,
     };
     if (currentProjectSignal.value) {
       currentProjectSignal.value.viewport = viewport;
@@ -2470,7 +2476,7 @@ export async function saveProjectAction(): Promise<boolean> {
  * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2506,6 +2512,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
       current: timeFilterFrameStartSignal.value,
       step: timeFilterStepSignal.value,
       unit: timeFilterUnitSignal.value,
+      ...timeReckoningSignal.value,
     };
     if (currentProjectSignal.value) {
       currentProjectSignal.value.viewport = viewport;

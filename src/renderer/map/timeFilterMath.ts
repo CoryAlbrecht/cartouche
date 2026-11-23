@@ -1,7 +1,7 @@
 /**
  * @file timeFilterMath.ts
  * @module renderer/map/timeFilterMath
- * @description Calendar-aware UTC temporal mathematics, discrete and micro-decimal stepping with leap-year and month clamping, and auto-range feature aggregation.
+ * @description Calendar-aware UTC temporal mathematics, discrete and micro-decimal stepping with leap-year and month clamping, and auto-range feature aggregation. Every function follows the project's Time Reckoning (ADR 0038, read from {@link timeReckoningSignal} unless passed): a preset Calendar steps Months / Years with its own arithmetic, a Custom Era in Gregorian, and Plain Number by the bare Step whatever the Unit; Days and smaller are fixed lengths everywhere.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
  * @updated 2026-11-22
@@ -27,7 +27,14 @@ import type {
 } from "../../shared/types";
 import { projectLayersSignal } from "../state/projectSignals";
 import { featuresSignal } from "../state/gisSignals";
-import { parseTemporalValue } from "./temporalPredicate";
+import {
+  parseTemporalValue,
+  temporalFieldsSuitReckoning,
+} from "./temporalPredicate";
+import { timeReckoningSignal } from "../state/timeFilterSignals";
+import { stepCalendarInstant } from "../../shared/time/reckonedTime";
+import { isCalendarId } from "../../shared/time/timeReckoning";
+import type { TimeReckoning } from "../../shared/types";
 import { logging } from "../../shared/logging";
 import {
   decodeFeaturePacket,
@@ -88,17 +95,19 @@ export function getDaysInMonthUtc(year: number, month: number): number {
  * @description Advances or steps backward a UTC epoch millisecond timestamp using calendar-aware arithmetic.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {number} timestampUtc - Starting timestamp in UTC epoch milliseconds.
  * @param {number} stepDelta - Step delta (positive for forward, negative for backward).
- * @param {TimeFilterUnit} unit - Time unit ('Years' | 'Months' | 'Weeks' | 'Days' | 'Hours' | 'Minutes' | 'Seconds' | 'Milliseconds').
+ * @param {TimeFilterUnit} unit - Time unit ('Years' | 'Months' | 'Weeks' | 'Days' | 'Hours' | 'Minutes' | 'Seconds' | 'Milliseconds'); ignored for Plain Number.
+ * @param {TimeReckoning} [reckoning] - Time Reckoning (defaults to the project's).
  * @returns {number} Resulting timestamp in UTC epoch milliseconds.
  */
 export function stepTemporalTimestamp(
   timestampUtc: number,
   stepDelta: number,
-  unit: TimeFilterUnit
+  unit: TimeFilterUnit,
+  reckoning: TimeReckoning = timeReckoningSignal.value
 ): number {
   if (
     !Number.isFinite(timestampUtc)
@@ -106,6 +115,23 @@ export function stepTemporalTimestamp(
     || stepDelta === 0
   ) {
     return timestampUtc;
+  }
+
+  if (reckoning.reckoning === "number") {
+    return timestampUtc + stepDelta;
+  }
+
+  if (
+    (unit === "Months" || unit === "Years")
+    && isCalendarId(reckoning.reckoning)
+    && reckoning.reckoning !== "gregory"
+  ) {
+    return stepCalendarInstant(
+      timestampUtc,
+      stepDelta,
+      unit,
+      reckoning.reckoning
+    );
   }
 
   const MILLIS_PER_SECOND = 1000;
@@ -210,21 +236,23 @@ export function stepTemporalTimestamp(
  * @description Computes discrete frame window end timestamp adhering to the active step and unit interval.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {number} startUtc - Active frame start in UTC epoch milliseconds.
  * @param {number} step - Step magnitude.
  * @param {TimeFilterUnit} unit - Step unit denomination.
  * @param {number} rangeEndUtc - Upper boundary of temporal range in UTC epoch milliseconds.
+ * @param {TimeReckoning} [reckoning] - Time Reckoning (defaults to the project's).
  * @returns {number} Clamped frame end timestamp in UTC epoch milliseconds.
  */
 export function computeFrameEnd(
   startUtc: number,
   step: number,
   unit: TimeFilterUnit,
-  rangeEndUtc: number
+  rangeEndUtc: number,
+  reckoning: TimeReckoning = timeReckoningSignal.value
 ): number {
-  const targetEnd = stepTemporalTimestamp(startUtc, step, unit);
+  const targetEnd = stepTemporalTimestamp(startUtc, step, unit, reckoning);
   return Math.min(rangeEndUtc, targetEnd);
 }
 
@@ -238,18 +266,23 @@ export function computeFrameEnd(
  * @description Returns numeric slider step attribute in milliseconds or 1 for calendar-variable units.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {number} step - Step magnitude multiplier.
  * @param {TimeFilterUnit} unit - Step unit denomination.
+ * @param {TimeReckoning} [reckoning] - Time Reckoning (defaults to the project's); Plain Number uses the bare Step.
  * @returns {number} Slider step attribute value in milliseconds.
  */
 export function computeTemporalStepAttribute(
   step: number,
-  unit: TimeFilterUnit
+  unit: TimeFilterUnit,
+  reckoning: TimeReckoning = timeReckoningSignal.value
 ): number {
   if (!Number.isFinite(step) || step <= 0) {
     return 1;
+  }
+  if (reckoning.reckoning === "number") {
+    return step;
   }
   if (unit === "Milliseconds") {
     return Math.max(1, Math.round(step));
@@ -281,13 +314,14 @@ export function computeTemporalStepAttribute(
  * @description Snaps a timestamp to discrete calendar step increments between rangeStart and rangeEnd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-11
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {number} timestampUtc - Raw timestamp in UTC epoch milliseconds to be snapped.
  * @param {number} rangeStartUtc - Lower boundary and step origin in UTC epoch milliseconds.
  * @param {number} rangeEndUtc - Upper boundary in UTC epoch milliseconds.
  * @param {number} step - Step magnitude multiplier.
  * @param {TimeFilterUnit} unit - Step unit denomination.
+ * @param {TimeReckoning} [reckoning] - Time Reckoning (defaults to the project's).
  * @returns {number} Snapped and clamped timestamp in UTC epoch milliseconds.
  */
 export function snapToTemporalStep(
@@ -295,7 +329,8 @@ export function snapToTemporalStep(
   rangeStartUtc: number,
   rangeEndUtc: number,
   step: number,
-  unit: TimeFilterUnit
+  unit: TimeFilterUnit,
+  reckoning: TimeReckoning = timeReckoningSignal.value
 ): number {
   if (!Number.isFinite(timestampUtc)) {
     return rangeStartUtc;
@@ -308,6 +343,14 @@ export function snapToTemporalStep(
   }
   if (!Number.isFinite(step) || step <= 0) {
     return rangeStartUtc;
+  }
+
+  // Plain Number: bare Step increments from the range start
+  if (reckoning.reckoning === "number") {
+    const n = Math.round((timestampUtc - rangeStartUtc) / step);
+    const raw = rangeStartUtc + n * step;
+    const candidate = Number.isInteger(raw) ? raw : Number(raw.toPrecision(15));
+    return Math.max(rangeStartUtc, Math.min(rangeEndUtc, candidate));
   }
 
   // Fixed duration units: exact arithmetic
@@ -344,7 +387,8 @@ export function snapToTemporalStep(
   let low = 0;
   let high = Math.max(2, estimatedK * 2);
   while (
-    stepTemporalTimestamp(rangeStartUtc, high * step, unit) < timestampUtc
+    stepTemporalTimestamp(rangeStartUtc, high * step, unit, reckoning)
+    < timestampUtc
   ) {
     low = high;
     high *= 2;
@@ -352,12 +396,18 @@ export function snapToTemporalStep(
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-    const tMid = stepTemporalTimestamp(rangeStartUtc, mid * step, unit);
+    const tMid = stepTemporalTimestamp(
+      rangeStartUtc,
+      mid * step,
+      unit,
+      reckoning
+    );
     if (tMid <= timestampUtc) {
       const tNext = stepTemporalTimestamp(
         rangeStartUtc,
         (mid + 1) * step,
-        unit
+        unit,
+        reckoning
       );
       if (tNext > timestampUtc) {
         const candidate =
@@ -379,18 +429,23 @@ export function snapToTemporalStep(
  * @description Scans active temporal layers and extracts feature attribute timestamps to compute bounding range.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {LayerDescriptor[]} [layers] - Optional layer descriptors array (defaults to projectLayersSignal.value).
  * @param {GisFeature[]} [features] - Optional features array (defaults to featuresSignal.value).
+ * @param {TimeReckoning} [reckoning] - Time Reckoning (defaults to the project's): Plain Number reads numeric values as numbers, and layers whose fields don't suit it are skipped.
  * @returns {{ from: number; to: number } | null} Temporal bounding envelope in UTC epoch milliseconds, or null if no valid timestamps found.
  */
 export function calculateActiveTemporalRange(
   layers: LayerDescriptor[] = projectLayersSignal.value,
-  features: GisFeature[] = featuresSignal.value
+  features: GisFeature[] = featuresSignal.value,
+  reckoning: TimeReckoning = timeReckoningSignal.value
 ): { from: number; to: number } | null {
+  const kind = reckoning.reckoning;
   const activeTemporalLayers = layers.filter(
-    (l) => l.temporal?.enabled || l.temporalEnabled
+    (l) =>
+      (l.temporal?.enabled || l.temporalEnabled)
+      && temporalFieldsSuitReckoning(l.temporal, l.fields, kind)
   );
   if (activeTemporalLayers.length === 0) {
     return null;
@@ -413,7 +468,7 @@ export function calculateActiveTemporalRange(
           && f.properties
           && f.properties[startField] !== undefined
         ) {
-          const t = parseTemporalValue(f.properties[startField]);
+          const t = parseTemporalValue(f.properties[startField], kind);
           if (t !== null) {
             if (t < minTime) minTime = t;
             if (t > maxTime) maxTime = t;
@@ -422,7 +477,7 @@ export function calculateActiveTemporalRange(
       }
       if (mode === "end" || mode === "start_end") {
         if (endField && f.properties && f.properties[endField] !== undefined) {
-          const t = parseTemporalValue(f.properties[endField]);
+          const t = parseTemporalValue(f.properties[endField], kind);
           if (t !== null) {
             if (t < minTime) minTime = t;
             if (t > maxTime) maxTime = t;
@@ -485,7 +540,7 @@ export function extractFirstFeatureProperties(
  * @description Queries global temporal bounds across active time-enabled layers via IPC or in-memory fallback.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {LayerDescriptor[]} [layers] - Optional layer descriptors array (defaults to projectLayersSignal.value).
  * @param {(layerId: string, options: QueryExtentOptions) => Promise<any>} [queryExtentFn] - Optional queryExtent function for IPC dispatch or mocking.
@@ -495,8 +550,11 @@ export async function autoDetectTemporalRange(
   layers: LayerDescriptor[] = projectLayersSignal.value,
   queryExtentFn?: (layerId: string, options: QueryExtentOptions) => Promise<any>
 ): Promise<{ from: number; to: number } | null> {
+  const kind = timeReckoningSignal.value.reckoning;
   const activeTemporalLayers = layers.filter(
-    (l) => (l.temporal ? l.temporal.enabled : l.temporalEnabled) === true
+    (l) =>
+      (l.temporal ? l.temporal.enabled : l.temporalEnabled) === true
+      && temporalFieldsSuitReckoning(l.temporal, l.fields, kind)
   );
   if (activeTemporalLayers.length === 0) {
     return null;
@@ -532,7 +590,7 @@ export async function autoDetectTemporalRange(
             && props[minSortField] !== undefined
             && props[minSortField] !== null
           ) {
-            const t = parseTemporalValue(props[minSortField]);
+            const t = parseTemporalValue(props[minSortField], kind);
             if (t !== null && Number.isFinite(t)) {
               if (t < minTime) minTime = t;
               if (t > maxTime) maxTime = t;
@@ -561,7 +619,7 @@ export async function autoDetectTemporalRange(
             && props[maxSortField] !== undefined
             && props[maxSortField] !== null
           ) {
-            const t = parseTemporalValue(props[maxSortField]);
+            const t = parseTemporalValue(props[maxSortField], kind);
             if (t !== null && Number.isFinite(t)) {
               if (t < minTime) minTime = t;
               if (t > maxTime) maxTime = t;

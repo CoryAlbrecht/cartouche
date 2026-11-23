@@ -1,7 +1,7 @@
 /**
  * @file TimeFilterWidget.tsx
  * @module renderer/workbench/widgets/TimeFilterWidget
- * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping.
+ * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping. From, To, the slider value text and the Current Frame are shown in the project's Time Reckoning (ADR 0038); in Plain Number they are bare numbers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
  * @updated 2026-11-22
@@ -20,6 +20,8 @@
  * @see {@link TIME_FILTER_SCRUB_DEBOUNCE_MS}
  * @see {@link Icon}
  * @see {@link isProjectDirtySignal}
+ * @see {@link formatInstant}
+ * @see {@link timeReckoningSignal}
  */
 
 import React, {
@@ -40,7 +42,7 @@ import {
   mdiSkipForwardOutline,
 } from "@mdi/js";
 import { BasicWidget, type BasicWidgetProps } from "./BasicWidget";
-import { formatUtcTimestamp } from "../../components/common/TimestampSpinner";
+import { formatInstant } from "../../../shared/time/reckonedTime";
 import {
   TimeFilterEnabledToggle,
   TimeFilterRangeStepControls,
@@ -57,6 +59,7 @@ import {
   setTimeFilterFrame,
   setTimeFilterRange,
   setTimeFilterStep,
+  timeReckoningSignal,
 } from "../../state/timeFilterSignals";
 import { isProjectDirtySignal } from "../../state/projectSignals";
 import {
@@ -132,6 +135,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
   const rangeEnd = timeFilterRangeEndSignal.value;
   const step = timeFilterStepSignal.value;
   const unit = timeFilterUnitSignal.value;
+  const reckoning = timeReckoningSignal.value;
 
   const [scrubbingValue, setScrubbingValue] = useState<number | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -266,7 +270,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
       computeFrameEnd(scrubbingValue, step, unit, rangeEnd)
     : frameEnd;
 
-  const currentFrameLabel = `${formatUtcTimestamp(displayedFrameStart)} | ${formatUtcTimestamp(displayedFrameEnd)}`;
+  const currentFrameLabel = `${formatInstant(displayedFrameStart, reckoning)} | ${formatInstant(displayedFrameEnd, reckoning)}`;
 
   const sliderMin = rangeStart;
   const sliderMax = Math.max(rangeStart, rangeEnd);
@@ -418,6 +422,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             max={sliderMax}
             step={sliderStep}
             value={displayedFrameStart}
+            aria-valuetext={formatInstant(displayedFrameStart, reckoning)}
             disabled={sliderDisabled}
             onChange={handleSliderChange}
             style={{
@@ -443,6 +448,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             to={rangeEnd}
             step={step}
             unit={unit}
+            reckoning={reckoning}
             onFromChange={handleFromChange}
             onToChange={handleToChange}
             onStepChange={handleStepChange}

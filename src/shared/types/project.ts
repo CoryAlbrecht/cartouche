@@ -296,6 +296,76 @@ export type TimeFilterUnit =
   | "Milliseconds";
 
 /**
+ * Preset Calendars a Time Reckoning can choose (`Intl` calendar identifiers).
+ * @typedef {'gregory' | 'hebrew' | 'islamic-civil' | 'persian' | 'ethiopic' | 'coptic' | 'buddhist'} CalendarId
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+export type CalendarId =
+  | "gregory"
+  | "hebrew"
+  | "islamic-civil"
+  | "persian"
+  | "ethiopic"
+  | "coptic"
+  | "buddhist";
+
+/**
+ * The project's Time Reckoning: a preset Calendar, a Custom Era (`custom`) or Plain Number (`number`).
+ * @typedef {CalendarId | 'custom' | 'number'} TimeReckoningKind
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+export type TimeReckoningKind = CalendarId | "custom" | "number";
+
+/**
+ * Where an Era Label is shown: before (`prefix`) or after (`suffix`) the value.
+ * @typedef {'prefix' | 'suffix'} EraLabelPosition
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+export type EraLabelPosition = "prefix" | "suffix";
+
+/**
+ * Era Counting: `dates` counts from 1 with no year zero; `durations` counts from 0.
+ * @typedef {'dates' | 'durations'} EraCounting
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+export type EraCounting = "dates" | "durations";
+
+/**
+ * A fully resolved Time Reckoning with its Era (ADR 0038). Every field is always present.
+ * @typedef {Object} TimeReckoning
+ * @property {TimeReckoningKind} reckoning - Preset Calendar, Custom Era or Plain Number.
+ * @property {number} zeroTime - Zero Time of the Era in Unix-epoch milliseconds.
+ * @property {string} eraLabelAfter - Era Label for instants at or after the Zero Time.
+ * @property {string} eraLabelBefore - Era Label for instants before the Zero Time.
+ * @property {EraLabelPosition} eraLabelPosition - Whether the Era Label precedes or follows the value.
+ * @property {EraCounting} eraCounting - Dates (from 1, no year zero) or Durations (from 0).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+export interface TimeReckoning {
+  reckoning: TimeReckoningKind;
+  zeroTime: number;
+  eraLabelAfter: string;
+  eraLabelBefore: string;
+  eraLabelPosition: EraLabelPosition;
+  eraCounting: EraCounting;
+}
+
+/**
  * Structured project-level time filter configuration options for workbench transport control and viewport filtering.
  * @typedef {Object} ProjectTimeFilterConfig
  * @property {boolean} [enabled=false] - Whether dynamic temporal filtering is active in the map canvas.
@@ -304,9 +374,15 @@ export type TimeFilterUnit =
  * @property {number} [current] - Current active frame start timestamp in UTC epoch milliseconds.
  * @property {number} [step=1.0] - Step increment value.
  * @property {TimeFilterUnit} [unit='Days'] - Step unit denomination.
+ * @property {TimeReckoningKind} [reckoning='gregory'] - Time Reckoning; missing means Gregorian.
+ * @property {number} [zeroTime] - Era Zero Time in Unix-epoch milliseconds.
+ * @property {string} [eraLabelAfter] - Era Label after the Zero Time.
+ * @property {string} [eraLabelBefore] - Era Label before the Zero Time.
+ * @property {EraLabelPosition} [eraLabelPosition] - Era Label position.
+ * @property {EraCounting} [eraCounting] - Era Counting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-10
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 export interface ProjectTimeFilterConfig {
@@ -316,6 +392,12 @@ export interface ProjectTimeFilterConfig {
   current?: number;
   step?: number;
   unit?: TimeFilterUnit;
+  reckoning?: TimeReckoningKind;
+  zeroTime?: number;
+  eraLabelAfter?: string;
+  eraLabelBefore?: string;
+  eraLabelPosition?: EraLabelPosition;
+  eraCounting?: EraCounting;
 }
 
 /**

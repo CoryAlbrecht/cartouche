@@ -4,7 +4,7 @@
  * @description Guardrail tests for the renderer TSX side of the Theme-bound Focus Indicator and Invalid Focus Indicator (Spec #316, Tickets #318 / #319): no renderer TSX sets an inline outline, no focusable control carries an inline colour (colour literal or inline theme token), invalid state is never coloured inline and is expressed only through `aria-invalid` / `.cartouche-focus-invalid`, and the migrated controls carry the classes that the workbench.css guardrails in FocusIndicator.test.ts bind to Tier 2 Component Tokens. Also (Spec #322) the TableWidget, its cell editors, AttributeTableWidget and the Layer Properties Dialog set no colour inline on any element, focusable or not, and size every icon from the `ui.icon.size` preference.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-16
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see FocusIndicator.test.ts
  */
@@ -436,7 +436,11 @@ describe("TimestampSpinner segment classes (Ticket #318)", () => {
     const segments = [
       ...html.matchAll(/<input[^>]*data-segment="(\w+)"[^>]*>/g),
     ];
-    assert.equal(segments.length, 6);
+    assert.equal(
+      segments.length,
+      7,
+      "the era part and six numeric segments (#397)"
+    );
     for (const [tag, seg] of segments) {
       assert.match(
         tag,

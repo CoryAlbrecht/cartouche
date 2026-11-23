@@ -1,7 +1,7 @@
 /**
  * @file TimestampSpinner.test.ts
  * @module tests/renderer/components/TimestampSpinner.test
- * @description Unit and component tests for TimestampSpinner verifying discrete segment rendering, boundary clamping, non-cascading arithmetic, keyboard navigation, and UTC synchronization.
+ * @description Unit and component tests for TimestampSpinner verifying discrete segment rendering, boundary clamping, non-cascading arithmetic, keyboard navigation, UTC synchronization, and the Time Reckoning era part (#397).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
  * @updated 2026-11-22
@@ -19,6 +19,8 @@
 import { describe, it, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { createRendererJiti } from "../rendererJiti";
+import { GREGORIAN_TIME_RECKONING } from "../../../src/shared/time/timeReckoning";
+import type { TimeReckoning } from "../../../src/shared/types/project";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -1215,5 +1217,137 @@ describe("TimestampSpinner deferred typing (Ticket #396)", () => {
     press(year, "8");
     press(year, "Enter");
     assert.strictEqual(formatUtcTimestamp(emitted[0]), "0018-06-15 10:20:30");
+  });
+});
+
+describe("TimestampSpinner Time Reckoning and era part (Ticket #397)", () => {
+  let emitted: number[];
+
+  const GREGORY: TimeReckoning = { ...GREGORIAN_TIME_RECKONING };
+  const RELATIVE: TimeReckoning = {
+    reckoning: "custom",
+    zeroTime: Date.UTC(2000, 0, 1),
+    eraLabelAfter: "+",
+    eraLabelBefore: "−",
+    eraLabelPosition: "prefix",
+    eraCounting: "durations",
+  };
+
+  beforeEach(() => {
+    mock.timers.enable({ apis: ["setTimeout"] });
+    setupDom();
+    emitted = [];
+  });
+
+  afterEach(() => {
+    tearDownDom();
+    mock.timers.reset();
+  });
+
+  /** @description Renders a spinner at `epoch` in `reckoning`, recording onChange values. */
+  function renderAt(epoch: number, reckoning: TimeReckoning = GREGORY): void {
+    act(() => {
+      root?.render(
+        React.createElement(TimestampSpinner, {
+          value: epoch,
+          reckoning,
+          onChange: (v: number) => {
+            emitted.push(v);
+          },
+        })
+      );
+    });
+  }
+
+  /** @description Finds the input for a segment. */
+  function seg(name: string): MockElement {
+    const el = findNodeByPredicate(
+      container,
+      (n) => n.getAttribute("data-segment") === name
+    );
+    assert.ok(el, `Must find ${name} segment`);
+    return el;
+  }
+
+  /** @description Dispatches a keydown inside act. */
+  function press(el: MockElement, key: string): void {
+    const ev: any = {
+      type: "keydown",
+      key,
+      bubbles: true,
+      cancelable: true,
+      defaultPrevented: false,
+      preventDefault() {
+        ev.defaultPrevented = true;
+      },
+      stopPropagation() {},
+    };
+    act(() => {
+      el.dispatchEvent(ev);
+    });
+  }
+
+  /** @description UTC ms of a proleptic Gregorian date with the year taken literally. */
+  function utc(year: number, month: number, day: number): number {
+    const d = new Date(0);
+    d.setUTCFullYear(year, month - 1, day);
+    return d.getTime();
+  }
+
+  it("shows a leading era part with the side's Era Label", () => {
+    renderAt(utc(-43, 3, 15));
+    assert.equal(seg("era").value, "BCE");
+    assert.equal(seg("year").value, "44");
+    renderAt(utc(2024, 3, 15));
+    assert.equal(seg("era").value, "CE");
+  });
+
+  it("Up, Down and Space switch the era, keeping the year number", () => {
+    renderAt(utc(44, 3, 15));
+    const era = seg("era");
+    act(() => era.focus());
+    press(era, "ArrowUp");
+    assert.equal(emitted.at(-1), utc(-43, 3, 15), "44 CE → 44 BCE");
+    press(era, " ");
+    press(era, "ArrowDown");
+    assert.equal(emitted.length, 3);
+  });
+
+  it("+, - and a label's first letter set the era", () => {
+    renderAt(utc(2000, 1, 2), RELATIVE);
+    const era = seg("era");
+    act(() => era.focus());
+    assert.equal(era.value, "+");
+    press(era, "-");
+    assert.equal(emitted.at(-1), utc(2000, 1, 1) - 86400000);
+    press(era, "+");
+    assert.equal(emitted.length, 1, "already after: nothing to change");
+
+    renderAt(utc(2024, 3, 15));
+    const gEra = seg("era");
+    act(() => gEra.focus());
+    press(gEra, "b");
+    assert.equal(emitted.at(-1), utc(-2023, 3, 15), "2024 CE → 2024 BCE");
+  });
+
+  it("the year accepts six digits for the Temporal range", () => {
+    renderAt(utc(2024, 3, 15));
+    const year = seg("year");
+    act(() => year.focus());
+    for (const d of "123456") press(year, d);
+    assert.equal(year.value, "123456");
+    press(year, "Enter");
+    assert.equal(new Date(emitted[0]).getUTCFullYear(), 123456);
+  });
+
+  it("Durations segments start at 0 and show the Custom Era's counts", () => {
+    renderAt(Date.UTC(2057, 2, 3), RELATIVE);
+    assert.equal(seg("year").value, "57");
+    assert.equal(seg("month").value, "02");
+    assert.equal(seg("day").value, "02");
+    const month = seg("month");
+    act(() => month.focus());
+    press(month, "Backspace");
+    assert.equal(emitted[0], Date.UTC(2057, 0, 3), "month resets to 0, not 1");
   });
 });

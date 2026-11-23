@@ -4,7 +4,7 @@
  * @description Unit tests for Cartouche XML project loader and serializer, schema validation against project.xsd, and roundtrip fidelity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-15
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 
@@ -1308,7 +1308,7 @@ describe("CartoucheXmlLoader & ProjectLoaderRegistry", () => {
     // 2. Verify serialized XML tags
     assert.match(
       xmlContent,
-      /<timeFilter enabled="true" from="1000000000000" to="2000000000000" current="1500000000000" step="(0\.000000031623|3\.1623e-8)" unit="Years" \/>/
+      /<timeFilter enabled="true" from="1000000000000" to="2000000000000" current="1500000000000" step="(0\.000000031623|3\.1623e-8)" unit="Years" reckoning="gregory"[^>]*\/>/
     );
 
     // 3. Verify deserialization fidelity

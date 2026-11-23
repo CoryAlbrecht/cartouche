@@ -4,22 +4,28 @@
  * @description Pure temporal predicate evaluation engine testing vector feature attributes against the active temporal frame window, and the one "is this feature displayed now" predicate ({@link createFeatureDisplayPredicate}) that both the layer style's Time Filter wrapper and the Selection Tools use, so what is selectable is exactly what is drawn.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link evaluateTemporalPredicate}
+ * @see {@link isTimeFilterFieldEligible}
+ * @see {@link temporalFieldsSuitReckoning}
  * @see {@link createFeatureDisplayPredicate}
  * @see {@link parseTemporalValue}
  * @see {@link extractFeatureTemporalProperties}
  */
 
 import type {
+  InferredFieldType,
+  LayerFieldInfo,
   LayerTemporalConfig,
   LayerTemporalMode,
+  TimeReckoningKind,
 } from "../../shared/types/project";
 import {
   isTimeFilterActiveSignal,
   timeFilterFrameStartSignal,
   timeFilterFrameEndSignal,
+  timeReckoningSignal,
 } from "../state/timeFilterSignals";
 
 /**
@@ -28,28 +34,110 @@ import {
  * @property {number} [frameStartUtc] - Explicit frame start timestamp in UTC epoch milliseconds (overrides timeFilterFrameStartSignal if provided).
  * @property {number} [frameEndUtc] - Explicit frame end timestamp in UTC epoch milliseconds (overrides timeFilterFrameEndSignal if provided).
  * @property {boolean} [globalEnabled] - Explicit global time filter active toggle (overrides isTimeFilterActiveSignal if provided).
+ * @property {TimeReckoningKind} [reckoning] - Explicit Time Reckoning (overrides timeReckoningSignal if provided); Plain Number reads numeric strings as numbers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 export interface TemporalPredicateContext {
   frameStartUtc?: number;
   frameEndUtc?: number;
   globalEnabled?: boolean;
+  reckoning?: TimeReckoningKind;
+}
+
+/**
+ * @constant {ReadonlySet<string>} DATE_FIELD_TYPES
+ * @description Inferred field types that hold dates (compared as Unix milliseconds).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+const DATE_FIELD_TYPES: ReadonlySet<string> = new Set([
+  "date",
+  "time",
+  "datetime",
+]);
+
+/**
+ * @constant {ReadonlySet<string>} NUMERIC_FIELD_TYPES
+ * @description Inferred field types that hold plain numbers (compared as they are in Plain Number).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ */
+const NUMERIC_FIELD_TYPES: ReadonlySet<string> = new Set(["integer", "real"]);
+
+/**
+ * @function isTimeFilterFieldEligible
+ * @description Whether a layer field may drive the Time Filter in a Time Reckoning: date fields always; numeric fields only in Plain Number (ADR 0038 §4).
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {InferredFieldType | undefined} inferredType - The field's inferred type.
+ * @param {TimeReckoningKind} reckoning - The project's Time Reckoning.
+ * @returns {boolean} True when the field suits the Time Reckoning.
+ */
+export function isTimeFilterFieldEligible(
+  inferredType: InferredFieldType | undefined,
+  reckoning: TimeReckoningKind
+): boolean {
+  if (!inferredType) return false;
+  if (DATE_FIELD_TYPES.has(inferredType)) return true;
+  return reckoning === "number" && NUMERIC_FIELD_TYPES.has(inferredType);
+}
+
+/**
+ * A field whose type is unknown (no field schema, or a name not in it) is not judged, so layers
+ * whose schema has not loaded yet keep filtering.
+ * @function temporalFieldsSuitReckoning
+ * @description Whether every field a layer's Time Filter mode uses suits the Time Reckoning; when not, the layer's features are Undated Features.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {LayerTemporalConfig | undefined | null} config - Layer temporal configuration.
+ * @param {LayerFieldInfo[] | undefined} fields - Layer field schema, if known.
+ * @param {TimeReckoningKind} reckoning - The project's Time Reckoning.
+ * @returns {boolean} False when a used field has a known, unsuitable type.
+ */
+export function temporalFieldsSuitReckoning(
+  config: LayerTemporalConfig | undefined | null,
+  fields: LayerFieldInfo[] | undefined,
+  reckoning: TimeReckoningKind
+): boolean {
+  if (!config || !fields || fields.length === 0) return true;
+  const mode = config.mode || "start_end";
+  const used: Array<string | undefined> = [
+    mode === "end" ? undefined : config.startField,
+    mode === "start" ? undefined : config.endField,
+  ];
+  return used.every((name) => {
+    if (!name) return true;
+    const info = fields.find((f) => f.name === name);
+    return !info || isTimeFilterFieldEligible(info.inferredType, reckoning);
+  });
 }
 
 /**
  * @function parseTemporalValue
- * @description Normalizes diverse feature attribute temporal representations (epoch numbers, ISO strings, Date objects) into UTC epoch milliseconds.
+ * @description Normalizes diverse feature attribute temporal representations (epoch numbers, ISO strings, Date objects) into UTC epoch milliseconds. In Plain Number a numeric string is read as that number before any date parsing.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {unknown} value - Raw feature attribute value.
+ * @param {TimeReckoningKind} [reckoning] - Time Reckoning; dates are tried first unless it is `number`.
  * @returns {number | null} Normalized UTC epoch milliseconds, or null if unparseable, null, undefined, or empty.
  */
-export function parseTemporalValue(value: unknown): number | null {
+export function parseTemporalValue(
+  value: unknown,
+  reckoning?: TimeReckoningKind
+): number | null {
   if (value === null || value === undefined || value === "") {
     return null;
   }
@@ -67,6 +155,11 @@ export function parseTemporalValue(value: unknown): number | null {
     const trimmed = value.trim();
     if (!trimmed) {
       return null;
+    }
+
+    if (reckoning === "number") {
+      const plain = Number(trimmed);
+      if (Number.isFinite(plain)) return plain;
     }
 
     // Try standard ISO 8601 / RFC 2822 parsing
@@ -121,7 +214,7 @@ export function extractFeatureTemporalProperties(
  * Features with readable dates that fail the condition evaluate to false (hidden).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-11
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {unknown} featureOrProps - OpenLayers Feature or attribute key-value map.
  * @param {LayerTemporalConfig | undefined | null} config - Layer temporal configuration.
@@ -180,11 +273,16 @@ export function evaluateTemporalPredicate(
   const mode = config.mode as LayerTemporalMode | string;
   const startOp = config.startOp ?? ">=";
   const endOp = config.endOp ?? "<=";
+  const reckoning = context?.reckoning ?? timeReckoningSignal.value.reckoning;
 
   const fStart =
-    config.startField ? parseTemporalValue(props[config.startField]) : null;
+    config.startField ?
+      parseTemporalValue(props[config.startField], reckoning)
+    : null;
   const fEnd =
-    config.endField ? parseTemporalValue(props[config.endField]) : null;
+    config.endField ?
+      parseTemporalValue(props[config.endField], reckoning)
+    : null;
 
   // An unreadable date imposes no constraint: a feature lacking only one date is filtered by the other
   // alone, and a feature lacking every configured date is an Undated Feature, always shown.
