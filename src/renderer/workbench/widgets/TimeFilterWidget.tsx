@@ -4,7 +4,7 @@
  * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TimeFilterControls}
@@ -118,7 +118,7 @@ export interface TimeFilterWidgetProps extends Omit<
  * @description Dockable panel providing global temporal filtering controls, continuous scrubbing, and range settings. The Enabled toggle and the From / To / Step / Unit controls come from the shared TimeFilterControls module, bound to the time filter signals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {TimeFilterWidgetProps} props - Widget props.
  * @returns {React.ReactElement} Time filter widget element.
@@ -291,7 +291,6 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
           gap: "6px",
           padding: "6px 10px 8px 10px",
           boxSizing: "border-box",
-          fontSize: "0.8333rem",
           userSelect: "none",
         }}>
         {/* Top Control Bar: Activation, Auto-Range, VCR Transport, Current Frame */}
@@ -311,67 +310,77 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             />
             <button
               type='button'
-              className='time-filter-btn'
+              className='time-filter-btn time-filter-icon-btn time-filter-icon-btn-wide'
               title='Auto-calculate Range from Active Temporal Layers'
               aria-label='Auto-calculate Range from Active Temporal Layers'
-              onClick={handleAutoRange}
-              style={{ width: "28px", height: "24px" }}>
-              <Icon path={mdiMapClockOutline} size='16px' />
+              onClick={handleAutoRange}>
+              <Icon
+                path={mdiMapClockOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)'
+              />
             </button>
           </div>
 
           <div
             className='time-filter-divider'
-            style={{ width: "1px", height: "18px", margin: "0 2px" }}
+            style={{ width: "1px", height: "1.5rem", margin: "0 2px" }}
           />
 
           {/* VCR Transport Buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
             <button
               type='button'
-              className='time-filter-btn'
+              className='time-filter-btn time-filter-icon-btn'
               title='Jump to Start'
               aria-label='Jump to Start'
               disabled={isAtStart}
-              onClick={handleJumpToStart}
-              style={{ width: "26px", height: "24px" }}>
-              <Icon path={mdiSkipBackwardOutline} size='16px' />
+              onClick={handleJumpToStart}>
+              <Icon
+                path={mdiSkipBackwardOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)'
+              />
             </button>
             <button
               type='button'
-              className='time-filter-btn'
+              className='time-filter-btn time-filter-icon-btn'
               title='Step Backward'
               aria-label='Step Backward'
               disabled={isAtStart}
-              onClick={handleStepBackward}
-              style={{ width: "26px", height: "24px" }}>
-              <Icon path={mdiSkipPreviousOutline} size='16px' />
+              onClick={handleStepBackward}>
+              <Icon
+                path={mdiSkipPreviousOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)'
+              />
             </button>
             <button
               type='button'
-              className='time-filter-btn'
+              className='time-filter-btn time-filter-icon-btn'
               title='Step Forward'
               aria-label='Step Forward'
               disabled={isAtEnd}
-              onClick={handleStepForward}
-              style={{ width: "26px", height: "24px" }}>
-              <Icon path={mdiSkipNextOutline} size='16px' />
+              onClick={handleStepForward}>
+              <Icon
+                path={mdiSkipNextOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)'
+              />
             </button>
             <button
               type='button'
-              className='time-filter-btn'
+              className='time-filter-btn time-filter-icon-btn'
               title='Jump to End'
               aria-label='Jump to End'
               disabled={isAtEnd}
-              onClick={handleJumpToEnd}
-              style={{ width: "26px", height: "24px" }}>
-              <Icon path={mdiSkipForwardOutline} size='16px' />
+              onClick={handleJumpToEnd}>
+              <Icon
+                path={mdiSkipForwardOutline}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)'
+              />
             </button>
           </div>
 
           <div
             className='time-filter-divider'
-            style={{ width: "1px", height: "18px", margin: "0 2px" }}
+            style={{ width: "1px", height: "1.5rem", margin: "0 2px" }}
           />
 
           {/* Current Frame Display */}
@@ -381,26 +390,10 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              background: "transparent",
               padding: "2px 4px",
-              border: "none",
             }}>
-            <span
-              className='time-filter-current-frame-caption'
-              style={{
-                fontSize: "0.75rem",
-                fontFamily: "sans-serif",
-                fontWeight: 500,
-              }}>
-              Frame:
-            </span>
-            <span
-              className='time-filter-current-frame-label'
-              style={{
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                fontSize: "0.8333rem",
-              }}>
+            <span className='time-filter-current-frame-caption'>Frame:</span>
+            <span className='time-filter-current-frame-label'>
               {currentFrameLabel}
             </span>
           </div>

@@ -2195,6 +2195,20 @@
   cursor: default;
 }
 
+/* Time Filter icon buttons (Enabled toggle, Auto-Range, transport): sized from
+   ui.icon.size so they grow with their icons (Ticket #395). */
+.time-filter-icon-btn {
+  width: calc(var(--cartouche-ui-icon-size, 24px) + 2px);
+  min-width: calc(var(--cartouche-ui-icon-size, 24px) + 2px);
+  height: var(--cartouche-ui-icon-size, 24px);
+  min-height: var(--cartouche-ui-icon-size, 24px);
+}
+
+.time-filter-icon-btn-wide {
+  width: calc(var(--cartouche-ui-icon-size, 24px) + 4px);
+  min-width: calc(var(--cartouche-ui-icon-size, 24px) + 4px);
+}
+
 /* Time Filter Range Scrubber Slider & Pseudo-Elements (Ticket #256) */
 .time-filter-slider {
   flex: 1;
@@ -2291,6 +2305,57 @@
 
 .timestamp-spinner input {
   user-select: text;
+}
+
+/* TimestampSpinner frame: an input-styled box of 1rem monospace text
+   (Ticket #395). Per-site layout may still come through its style prop. */
+.timestamp-spinner {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0.1rem 0.25rem;
+  border: 0.0625rem solid var(--cartouche-input-border);
+  border-radius: 0.2rem;
+  background-color: var(--cartouche-input-bg);
+  color: var(--cartouche-input-fg);
+  font-family: var(--cartouche-theme-font-family-mono);
+  font-size: 1rem;
+}
+
+.timestamp-spinner.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.timestamp-spinner-divider-space {
+  padding: 0 0.2rem;
+}
+
+.timestamp-spinner-buttons {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 0.25rem;
+  user-select: none;
+}
+
+.timestamp-spinner-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--cartouche-ui-icon-size, 24px) * 0.6);
+  height: calc(var(--cartouche-ui-icon-size, 24px) * 0.5);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.timestamp-spinner-btn:disabled {
+  cursor: not-allowed;
 }
 
 /* =============================================================================
@@ -2546,9 +2611,10 @@
   border-radius: 0.1875rem;
   background-color: var(--cartouche-input-bg);
   color: var(--cartouche-input-fg);
-  font-size: 0.8333rem;
+  font-size: 1rem;
   width: 5.625rem;
-  padding: 0.125rem 1.125rem 0.125rem 0.375rem;
+  padding: 0.125rem calc(var(--cartouche-ui-icon-size, 1.5rem) * 0.6667 + 0.125rem)
+    0.125rem 0.375rem;
 }
 
 .time-filter-step-arrow {
@@ -2579,25 +2645,39 @@
 }
 
 /* TimeFilterWidget panel, TimeFilterControls text and their field labels (From, To, Step, Enabled). */
+/* Text in labels and controls is 1rem (Ticket #395). */
+.time-filter-current-frame-container {
+  border: none;
+  background: transparent;
+}
+
 .time-filter-widget-container {
   background-color: var(--cartouche-time-filter-bg);
   color: var(--cartouche-time-filter-fg);
+  font-size: 1rem;
 }
 
 .time-filter-controls {
   color: var(--cartouche-time-filter-fg);
+  font-size: 1rem;
 }
 
 .time-filter-field-label {
   color: var(--cartouche-time-filter-label-fg);
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .time-filter-current-frame-caption {
   color: var(--cartouche-time-filter-frame-caption-fg);
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .time-filter-current-frame-label {
   color: var(--cartouche-time-filter-frame-label-fg);
+  font-family: var(--cartouche-theme-font-family-mono);
+  font-size: 1rem;
 }
 
 /* TimestampSpinner segment inputs (year, month, day, hour, minute, second). */
@@ -2627,7 +2707,9 @@
 
 /* TimestampSpinner separators between segments. */
 .timestamp-spinner-divider {
+  padding: 0 0.05rem;
   color: var(--cartouche-timestamp-divider-fg);
+  user-select: none;
 }
 
 .timestamp-spinner-segment:disabled {

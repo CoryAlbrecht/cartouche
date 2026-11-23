@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -26,6 +26,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { createRendererJiti } from "../rendererJiti";
+import { classDeclaration } from "../styles/cssRules";
 
 // Mock .svg and .css imports for headless Node testing
 const nodeRequire = createRequire(import.meta.url);
@@ -707,14 +708,15 @@ describe("TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket 
       markup.includes("time-filter-current-frame-container"),
       "Frame display container must exist with class time-filter-current-frame-container"
     );
-    assert.ok(
-      markup.includes("background:transparent")
-        || markup.includes("background: transparent"),
-      "Frame container must define background: transparent"
+    assert.equal(
+      classDeclaration("time-filter-current-frame-container", "background"),
+      "transparent",
+      "Frame container must define background: transparent in workbench.css (#395)"
     );
-    assert.ok(
-      markup.includes("border:none") || markup.includes("border: none"),
-      "Frame container must define border: none"
+    assert.equal(
+      classDeclaration("time-filter-current-frame-container", "border"),
+      "none",
+      "Frame container must define border: none in workbench.css (#395)"
     );
   });
 
@@ -751,7 +753,11 @@ describe("TimeFilterWidget: Non-Interactive Current Frame Label Styling (Ticket 
       markup.includes("2026-01-01 00:00:00 | 2026-01-01 12:00:00"),
       "Must render formatted start and end timestamps"
     );
-    assert.ok(markup.includes("ui-monospace"), "Must use monospace font stack");
+    assert.equal(
+      classDeclaration("time-filter-current-frame-label", "font-family"),
+      "var(--cartouche-theme-font-family-mono)",
+      "Must use the Theme's monospace font stack from workbench.css (#395)"
+    );
   });
 });
 
