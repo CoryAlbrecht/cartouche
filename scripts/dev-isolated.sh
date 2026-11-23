@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @file dev-isolated.sh
 # @module scripts/dev-isolated
-# @description Starts and stops an isolated Cartouche dev instance for driving the live app (CDP scripts, focus audit) without touching the developer's own instance. `start` snapshots the checkout, uncommitted and untracked changes included, into a throw-away git worktree outside the repository, symlinks node_modules, and runs `npm run dev` there in its own process group on separate CDP and inspector ports with its own user data directory, so the checkout's dist-electron/ and the developer's preferences are never rebuilt or read. It refuses to start while its previous instance is alive or a port it needs is taken. `stop` kills only that process group and removes the worktree.
+# @description Starts and stops an isolated Cartouche dev instance for driving the live app (CDP scripts, focus audit) without touching the developer's own instance. `start` snapshots the checkout, uncommitted and untracked changes included, into a throw-away git worktree outside the repository, symlinks node_modules, and runs `npm run dev` there in its own process group on separate CDP and inspector ports with its own user data directory, so the checkout's dist-electron/ and the developer's preferences are never rebuilt or read. It refuses to start while its previous instance is alive or a port it needs is taken. `stop` kills only that process group and removes the worktree. Sourcing the script (from inside the checkout) defines its functions and turns on `set -euo pipefail` in the sourcing shell without running a command, so tests can drive `snapshot` alone.
 #
 # Usage:
 #   scripts/dev-isolated.sh start   # prints the CDP port once the renderer page is up
@@ -12,13 +12,13 @@
 # The Vite dev server always uses port 5173, so only one `npm run dev` (isolated or not) runs at a time.
 # @author Cory Albrecht <cory@albrecht.name>
 # @date 2026-11-18
-# @updated 2026-11-18
+# @updated 2026-11-22
 # @since 0.1.0-dev
 # @see scripts/cdp-client.js
 # @see scripts/cdp-focus-audit.js
 set -euo pipefail
 
-REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+REPO=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)
 BASE=${CARTOUCHE_ISOLATED_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/cartouche/dev-isolated}
 WORKTREE="$BASE/worktree"
 USERDATA="$BASE/userdata"
@@ -50,6 +50,21 @@ remove_worktree() {
   git -C "$REPO" worktree prune
 }
 
+# @function snapshot
+# @description Creates the worktree at HEAD, applies the checkout's uncommitted changes, copies its untracked files and symlinks its node_modules. node_modules is skipped in the copy: when the checkout is itself a git worktree its node_modules is a symlink, which an older `node_modules/` ignore rule does not match. Nothing else under $BASE is skipped, so CARTOUCHE_ISOLATED_DIR must point outside the checkout or at an ignored path.
+snapshot() {
+  git -C "$REPO" worktree add --detach "$WORKTREE" HEAD >/dev/null
+  if ! git -C "$REPO" diff --quiet HEAD; then
+    git -C "$REPO" diff --binary HEAD | git -C "$WORKTREE" apply
+  fi
+  while IFS= read -r -d '' file; do
+    case "$file" in node_modules | node_modules/*) continue ;; esac
+    mkdir -p "$WORKTREE/$(dirname "$file")"
+    cp -p "$REPO/$file" "$WORKTREE/$file"
+  done < <(git -C "$REPO" ls-files --others --exclude-standard -z)
+  ln -sfn "$REPO/node_modules" "$WORKTREE/node_modules"
+}
+
 # @function start
 # @description Snapshots the checkout into the worktree and launches the dev instance in a new process group.
 start() {
@@ -65,15 +80,7 @@ start() {
   done
   mkdir -p "$BASE"
   remove_worktree
-  git -C "$REPO" worktree add --detach "$WORKTREE" HEAD >/dev/null
-  if ! git -C "$REPO" diff --quiet HEAD; then
-    git -C "$REPO" diff --binary HEAD | git -C "$WORKTREE" apply
-  fi
-  while IFS= read -r -d '' file; do
-    mkdir -p "$WORKTREE/$(dirname "$file")"
-    cp -p "$REPO/$file" "$WORKTREE/$file"
-  done < <(git -C "$REPO" ls-files --others --exclude-standard -z)
-  ln -s "$REPO/node_modules" "$WORKTREE/node_modules"
+  snapshot
 
   # setsid runs as a background child that is not a group leader, so it starts
   # the new session in place: its PID is the process group id that stop kills.
@@ -111,6 +118,9 @@ stop() {
   remove_worktree
   echo "Isolated instance stopped."
 }
+
+# Sourced (by tests): define the functions only.
+[ "${BASH_SOURCE[0]}" = "$0" ] || return 0
 
 case "${1:-}" in
   start) start ;;

@@ -1,5 +1,5 @@
-# Dependencies
-node_modules/
+# Dependencies (no trailing slash: also matches the node_modules symlink in a git worktree)
+node_modules
 
 # Production / Build output
 dist/
