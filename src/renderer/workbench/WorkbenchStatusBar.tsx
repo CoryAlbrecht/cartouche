@@ -4,7 +4,7 @@
  * @description Dedicated leaf status bar component for the Workbench shell, isolating high-frequency cursor coordinate, cartographic scale, feature selection count, Project CRS and memory meter subscriptions from the root Workbench component.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link Workbench}
  * @see {@link projectCrsStatusSignal}
@@ -154,7 +154,7 @@ function memoryTooltip(snapshot: MemoryUsageSnapshot): string {
  * @description Status bar memory meter: the app's total memory (PSS on Linux, private bytes on Windows; marked approximate when any process is counted by resident memory), with a per-process breakdown in its tooltip. Main samples memory and pushes it over `onMemoryUsage` about every 2 s while the Workbench is visible; nothing renders until the first sample arrives. Its own state keeps the 2 s updates from re-rendering the rest of the status bar.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {Object} props - Component properties (none).
  * @returns {JSX.Element | null} The memory item, or null before the first sample.
@@ -176,12 +176,14 @@ const MemoryStatusItem: React.FC = () => {
       <div
         className='statusbar-item statusbar-memory'
         title={memoryTooltip(snapshot)}>
-        {t(
-          snapshot.approximate ?
-            "statusbar_memory_label"
-          : "statusbar_memory_label_exact",
-          { size: memorySize(snapshot.totalKb) }
-        )}
+        <span className='statusbar-item-label'>
+          {t(
+            snapshot.approximate ?
+              "statusbar_memory_label"
+            : "statusbar_memory_label_exact",
+            { size: memorySize(snapshot.totalKb) }
+          )}
+        </span>
       </div>
     </>
   );
@@ -189,10 +191,10 @@ const MemoryStatusItem: React.FC = () => {
 
 /**
  * @component WorkbenchStatusBar
- * @description Renders the bottom Workbench status bar displaying live cursor coordinates, cartographic scale denominator, selected feature count, the Project CRS (the CRS the map draws in, ADR 0033; see {@link projectCrsStatusSignal}), the memory meter ({@link MemoryStatusItem}), and application readiness indicator.
+ * @description Renders the bottom Workbench status bar displaying live cursor coordinates, cartographic scale denominator, selected feature count, the Project CRS (the CRS the map draws in, ADR 0033; see {@link projectCrsStatusSignal}), the memory meter ({@link MemoryStatusItem}), and application readiness indicator. Each status bar item's text sits in a `.statusbar-item-label` that truncates with an ellipsis at narrow widths (#393); the item's `title` keeps the full text.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @returns {JSX.Element} Rendered status bar footer element.
  */
@@ -210,7 +212,7 @@ export const WorkbenchStatusBar: React.FC = () => {
         className='statusbar-item'
         title='Current Cursor Coordinates (Lon, Lat)'>
         {coords ?
-          <span>
+          <span className='statusbar-item-label'>
             {coords.lon >= 0 ?
               `${coords.lon.toFixed(4)}°E`
             : `${Math.abs(coords.lon).toFixed(4)}°W`}
@@ -219,26 +221,31 @@ export const WorkbenchStatusBar: React.FC = () => {
               `${coords.lat.toFixed(4)}°N`
             : `${Math.abs(coords.lat).toFixed(4)}°S`}
           </span>
-        : <span>Coordinate: 0.0000°, 0.0000°</span>}
+        : <span className='statusbar-item-label'>
+            Coordinate: 0.0000°, 0.0000°
+          </span>
+        }
       </div>
 
       <div className='statusbar-separator' />
 
       <div className='statusbar-item' title='Cartographic Scale'>
-        Scale: 1 : {scale.toLocaleString()}
+        <span className='statusbar-item-label'>
+          Scale: 1 : {scale.toLocaleString()}
+        </span>
       </div>
 
       <div className='statusbar-separator' />
 
       <div className='statusbar-item' title='Selected Features'>
-        Selected: {selectedCount}
+        <span className='statusbar-item-label'>Selected: {selectedCount}</span>
       </div>
 
       <div className='statusbar-spacer' />
 
       <div className='statusbar-item statusbar-crs' title={crsStatus.tooltip}>
-        <Icon path={mdiEarth} size='1rem' />
-        {crsStatus.label}
+        <Icon path={mdiEarth} size='1rem' className='statusbar-item-icon' />
+        <span className='statusbar-item-label'>{crsStatus.label}</span>
       </div>
 
       <MemoryStatusItem />
@@ -246,7 +253,7 @@ export const WorkbenchStatusBar: React.FC = () => {
       <div className='statusbar-separator' />
 
       <div className='statusbar-item' title='Application Core Status'>
-        ● Ready
+        <span className='statusbar-item-label'>● Ready</span>
       </div>
     </footer>
   );

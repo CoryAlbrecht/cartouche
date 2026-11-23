@@ -4,7 +4,7 @@
  * @description Master workbench layout and component styling for Cartouche GIS desktop application, bound to semantic theme tokens (ADR 0027).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-21
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  */
 
@@ -1289,6 +1289,8 @@
   gap: 4px;
   padding: 0 6px;
   height: 100%;
+  min-width: 0;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color 0.12s ease;
 }
@@ -1297,11 +1299,26 @@
   background-color: var(--cartouche-statusbar-item-hover-bg);
 }
 
+/* A status bar item's text stays on one line and ends in an ellipsis when the bar is
+   too narrow (#393); the full text stays in the item's title tooltip. */
+.statusbar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Icons in a status bar item keep their size while the label truncates. */
+.statusbar-item-icon {
+  flex-shrink: 0;
+}
+
 .statusbar-separator {
   width: 1px;
   height: 0.875rem;
   background-color: var(--cartouche-statusbar-separator-bg);
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .statusbar-spacer {

@@ -1,10 +1,10 @@
 /**
  * @file WorkbenchStatusBar.test.ts
  * @module tests/renderer/workbench/WorkbenchStatusBar.test
- * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, the Project CRS item (ADR 0033 display rules and tooltips), and the memory meter item and its per-process tooltip (approximate resident totals, and exact PSS and private-bytes totals) rendered with the real en.xml strings, every memory meter string key present in en.xml and fr.xml, while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
+ * @description Unit and component tests for WorkbenchStatusBar verifying reactive signal updates for cursor coordinates, cartographic scale, selected features count, the Project CRS item (ADR 0033 display rules and tooltips), and the memory meter item and its per-process tooltip (approximate resident totals, and exact PSS and private-bytes totals) rendered with the real en.xml strings, each status bar item's text in a truncating `.statusbar-item-label` with the CRS icon marked as a non-shrinking item icon (#393), every memory meter string key present in en.xml and fr.xml, while ensuring zero re-renders of the root Workbench shell and outer ToolbarPanel components during coordinate signal mutations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-29
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link WorkbenchStatusBar}
  * @see {@link Workbench}
@@ -246,6 +246,17 @@ function findAllNodes(
     }
   }
   return result;
+}
+
+/**
+ * @function hasClass
+ * @description Tests whether a mock element carries a class.
+ * @param {MockElement} el - Element to test.
+ * @param {string} name - Class name.
+ * @returns {boolean} True when the element has the class.
+ */
+function hasClass(el: MockElement, name: string): boolean {
+  return String(el.className).split(" ").includes(name);
 }
 
 let doc: any;
@@ -501,9 +512,7 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
      * @returns {any} The CRS item element.
      */
     const crsItem = () =>
-      findAllNodes(container, (el) =>
-        String(el.className).split(" ").includes("statusbar-crs")
-      )[0];
+      findAllNodes(container, (el) => hasClass(el, "statusbar-crs"))[0];
 
     assert.equal(crsItem().textContent, "EPSG:3857");
     assert.match(
@@ -545,9 +554,7 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
      * @returns {any} The memory item element, if rendered.
      */
     const memoryItem = () =>
-      findAllNodes(container, (el) =>
-        String(el.className).split(" ").includes("statusbar-memory")
-      )[0];
+      findAllNodes(container, (el) => hasClass(el, "statusbar-memory"))[0];
 
     assert.equal(memoryItem(), undefined, "No memory item before a sample");
     assert.ok(memoryListener, "Status bar subscribes to memory samples");
@@ -621,7 +628,7 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
     });
 
     const item = findAllNodes(container, (el) =>
-      String(el.className).split(" ").includes("statusbar-memory")
+      hasClass(el, "statusbar-memory")
     )[0];
     assert.equal(item.textContent, "Memory: 700 MB");
     const lines = (item.getAttribute("title") ?? "").split("\n");
@@ -667,7 +674,7 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
     });
 
     const item = findAllNodes(container, (el) =>
-      String(el.className).split(" ").includes("statusbar-memory")
+      hasClass(el, "statusbar-memory")
     )[0];
     assert.equal(item.textContent, "Memory: ≈900 MB");
     const lines = (item.getAttribute("title") ?? "").split("\n");
@@ -686,6 +693,48 @@ describe("WorkbenchStatusBar Reactivity and Workbench Render Isolation", () => {
       lines.join(" | ")
     );
     assert.match(lines[lines.length - 1], /in each of them/);
+  });
+
+  it("puts each status bar item's text in a truncating label and marks the CRS icon as a non-shrinking item icon (#393)", async () => {
+    const { WorkbenchStatusBar } = jiti(
+      "@renderer/workbench/WorkbenchStatusBar"
+    );
+
+    await act(async () => {
+      root!.render(React.createElement(WorkbenchStatusBar));
+    });
+    await act(async () => {
+      memoryListener!({
+        totalKb: 512 * 1024,
+        measure: "resident",
+        approximate: true,
+        rows: [residentRow("main", 10, 512 * 1024, 600 * 1024)],
+      });
+    });
+
+    const items = findAllNodes(container, (el) =>
+      hasClass(el, "statusbar-item")
+    );
+    assert.equal(items.length, 6, "Expected six status bar items");
+    for (const item of items) {
+      const labels = item.childNodes.filter(
+        (c: any) => c?.nodeType === 1 && hasClass(c, "statusbar-item-label")
+      );
+      assert.equal(labels.length, 1, `One label in "${item.textContent}"`);
+      assert.equal(
+        labels[0].textContent,
+        item.textContent,
+        "All of an item's text sits in its label"
+      );
+      assert.ok(item.getAttribute("title"), "Full text stays in the tooltip");
+    }
+
+    const crs = items.find((el) => hasClass(el, "statusbar-crs"))!;
+    const icons = findAllNodes(crs, (el) =>
+      hasClass(el, "statusbar-item-icon")
+    );
+    assert.equal(icons.length, 1, "CRS item icon carries the icon class");
+    assert.equal(icons[0].tagName, "SVG");
   });
 
   it("finds every memory meter string key it uses in en.xml and fr.xml", () => {
