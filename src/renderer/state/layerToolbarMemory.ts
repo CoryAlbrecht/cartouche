@@ -4,7 +4,7 @@
  * @description Manages ephemeral per-layer toolbar state caching and restoration on active layer transitions.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link LayerToolbarState}
  * @see {@link activeLayerIdSignal}
@@ -32,6 +32,8 @@ import {
 
 /**
  * @typedef {Object} LayerToolbarState
+ * @property {ActiveTool} [mapTool] - Last map tool of any kind used on the layer.
+ * @property {ActiveTool} [panSelectTool] - Last Pan or Selection Tool used on the layer.
  * @property {ActiveTool} [digitizingTool] - Last active digitizing cursor tool ('point' | 'line' | 'polygon').
  * @property {SelectionMode} [selectionMode] - Last active spatial feature selection mode.
  * @property {boolean} [snappingEnabled] - Toggle state for vertex and segment snapping.
@@ -43,6 +45,8 @@ import {
  * @property {boolean} [vertexEditorMode] - Vertex Editor Mode toggle state.
  */
 export interface LayerToolbarState {
+  mapTool?: ActiveTool;
+  panSelectTool?: ActiveTool;
   digitizingTool?: ActiveTool;
   selectionMode?: SelectionMode;
   snappingEnabled?: boolean;
@@ -55,11 +59,44 @@ export interface LayerToolbarState {
 }
 
 /**
+ * @function isPanOrSelectTool
+ * @description Whether a map tool is Pan or one of the Selection Tools, the tools that need no Layer Edit Mode.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {ActiveTool | undefined} tool - Map tool to classify.
+ * @returns {boolean} True for Pan, Select by Click, Select by Rectangle and Select by Lasso.
+ */
+export function isPanOrSelectTool(tool: ActiveTool | undefined): boolean {
+  return (
+    tool === "pan"
+    || tool === "select_click"
+    || tool === "select_rectangle"
+    || tool === "select_lasso"
+  );
+}
+
+/**
+ * @function isDigitizingTool
+ * @description Whether a map tool is one of the digitizing tools, which need the Active Layer in Layer Edit Mode.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {ActiveTool | undefined} tool - Map tool to classify.
+ * @returns {boolean} True for the Point, Line and Polygon tools.
+ */
+export function isDigitizingTool(tool: ActiveTool | undefined): boolean {
+  return tool === "point" || tool === "line" || tool === "polygon";
+}
+
+/**
  * @function getLayerToolbarPreference
  * @description Retrieves a cached ephemeral toolbar preference for a given layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-10-27
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @template T
  * @param {string} layerId - Target layer identifier.
@@ -87,7 +124,10 @@ export function getLayerToolbarPreference<T>(
       if (res && typeof res === "object" && "value" in res) {
         return res.value !== undefined ? (res.value as T) : defaultValue;
       }
-      return res as T;
+      // An empty map means the key is unset: fall through to the signal map
+      if (!(res && typeof res === "object" && Object.keys(res).length === 0)) {
+        return res as T;
+      }
     }
   }
 
@@ -147,10 +187,10 @@ export function setLayerToolbarPreference(
 
 /**
  * @function captureLayerToolbarState
- * @description Captures active digitizing tool, selection mode, snapping parameters and Vertex Editor Mode for an outgoing layer.
+ * @description Captures the map tool, last Pan or Selection Tool, last digitizing tool, the Selection Tool shown on the split button, snapping parameters and Vertex Editor Mode for an outgoing layer.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string} layerId - Target layer identifier to capture toolbar state for.
  * @returns {LayerToolbarState} Structured captured layer toolbar state.
@@ -162,11 +202,7 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
 
   const currentTool = activeToolSignal.value;
   let digitizingTool: ActiveTool | undefined;
-  if (
-    currentTool === "point"
-    || currentTool === "line"
-    || currentTool === "polygon"
-  ) {
+  if (isDigitizingTool(currentTool)) {
     digitizingTool = currentTool;
   } else {
     digitizingTool = getLayerToolbarPreference<ActiveTool>(
@@ -174,6 +210,12 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
       "digitizingTool"
     );
   }
+
+  const mapTool = currentTool;
+  const panSelectTool =
+    isPanOrSelectTool(currentTool) ? currentTool : (
+      getLayerToolbarPreference<ActiveTool>(layerId, "panSelectTool")
+    );
 
   const selectionMode = activeSelectionModeSignal.value;
   const snappingEnabled = snappingEnabledSignal.value;
@@ -184,6 +226,10 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   const snappingDistance = snappingDistanceSignal.value;
   const vertexEditorMode = vertexEditorModeSignal.value;
 
+  setLayerToolbarPreference(layerId, "mapTool", mapTool);
+  if (panSelectTool !== undefined) {
+    setLayerToolbarPreference(layerId, "panSelectTool", panSelectTool);
+  }
   if (digitizingTool !== undefined) {
     setLayerToolbarPreference(layerId, "digitizingTool", digitizingTool);
   }
@@ -197,6 +243,8 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
   setLayerToolbarPreference(layerId, "vertexEditorMode", vertexEditorMode);
 
   return {
+    mapTool,
+    panSelectTool,
     digitizingTool,
     selectionMode,
     snappingEnabled,
@@ -211,11 +259,11 @@ export function captureLayerToolbarState(layerId: string): LayerToolbarState {
 
 /**
  * @function restoreLayerToolbarState
- * @description Restores cached digitizing tool, selection mode, snapping parameters and Vertex Editor Mode for an incoming layer.
- * Vertex Editor Mode and the digitizing tool are only restored while the layer is in Layer Edit Mode.
+ * @description Restores the cached map tool, the Selection Tool shown on the split button, snapping parameters and Vertex Editor Mode for an incoming layer.
+ * Vertex Editor Mode and a digitizing tool are only restored while the layer is in Layer Edit Mode; see {@link resolveLayerMapTool}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string} layerId - Incoming layer identifier.
  * @returns {void}
@@ -279,20 +327,66 @@ export function restoreLayerToolbarState(layerId: string): void {
     snappingDistanceSignal.value = cachedSnappingDistance;
   }
 
-  const cachedDigitizingTool = getLayerToolbarPreference<ActiveTool>(
-    layerId,
-    "digitizingTool"
-  );
   const isEditable = editableLayerIdsSignal.value.has(layerId);
-  if (isEditable) {
-    activeToolSignal.value = cachedDigitizingTool ?? "pan";
-  } else {
-    activeToolSignal.value = "pan";
-  }
+  activeToolSignal.value = resolveLayerMapTool(layerId, isEditable);
 
   vertexEditorModeSignal.value =
     isEditable
     && getLayerToolbarPreference<boolean>(layerId, "vertexEditorMode") === true;
+}
+
+/**
+ * @function rememberPanSelectTool
+ * @description Stores a Pan or Selection Tool as the layer's last one, so a layer that leaves Layer Edit Mode
+ * gets back the Pan or Selection Tool used before its digitizing tool. Other tools are ignored.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {string | null} layerId - Active Layer identifier, or null when there is none.
+ * @param {ActiveTool} tool - Map tool just made active.
+ * @returns {void}
+ */
+export function rememberPanSelectTool(
+  layerId: string | null,
+  tool: ActiveTool
+): void {
+  if (!layerId || !isPanOrSelectTool(tool)) return;
+  if (
+    getLayerToolbarPreference<ActiveTool>(layerId, "panSelectTool") === tool
+  ) {
+    return;
+  }
+  setLayerToolbarPreference(layerId, "panSelectTool", tool);
+}
+
+/**
+ * @function resolveLayerMapTool
+ * @description Chooses the map tool a layer gets when it becomes the Active Layer: its last map tool;
+ * its last Pan or Selection Tool instead when that was a digitizing tool and the layer is not in Layer Edit Mode;
+ * and, for a layer with nothing remembered, the current tool if it is Pan or a Selection Tool, otherwise Pan.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-22
+ * @updated 2026-11-22
+ * @since 0.1.0-dev
+ * @param {string} layerId - Incoming layer identifier.
+ * @param {boolean} isEditable - Whether the incoming layer is in Layer Edit Mode.
+ * @returns {ActiveTool} The map tool to make active.
+ */
+function resolveLayerMapTool(layerId: string, isEditable: boolean): ActiveTool {
+  const currentTool = activeToolSignal.peek();
+  const fallback: ActiveTool =
+    isPanOrSelectTool(currentTool) ? currentTool : "pan";
+  const mapTool = getLayerToolbarPreference<ActiveTool>(layerId, "mapTool");
+  if (mapTool === undefined) {
+    return fallback;
+  }
+  if (isPanOrSelectTool(mapTool) || isEditable) {
+    return mapTool;
+  }
+  return (
+    getLayerToolbarPreference<ActiveTool>(layerId, "panSelectTool") ?? fallback
+  );
 }
 
 /**
@@ -302,10 +396,10 @@ let previousActiveLayerId: string | null = activeLayerIdSignal.peek();
 
 /**
  * @function handleActiveLayerChange
- * @description Coordinates capturing the outgoing active layer toolbar state and restoring the incoming active layer state.
+ * @description Coordinates capturing the outgoing active layer toolbar state and restoring the incoming active layer state. Clearing the Active Layer keeps Pan or a Selection Tool and replaces a digitizing tool with Pan.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string | null} newLayerId - Newly active layer identifier, or null if active layer is cleared.
  * @param {string | null} prevLayerId - Previously active layer identifier, or null if none was active.
@@ -326,7 +420,9 @@ export function handleActiveLayerChange(
   }
 
   if (newLayerId === null) {
-    activeToolSignal.value = "pan";
+    if (isDigitizingTool(activeToolSignal.value)) {
+      activeToolSignal.value = "pan";
+    }
     vertexEditorModeSignal.value = false;
     return;
   }

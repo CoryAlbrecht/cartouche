@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, and toolbar placements.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -101,6 +101,9 @@ import {
   restoreLayerToolbarState,
   handleActiveLayerChange,
   resetLayerToolbarMemoryState,
+  rememberPanSelectTool,
+  isPanOrSelectTool,
+  isDigitizingTool,
   type LayerToolbarState,
 } from "./layerToolbarMemory";
 import {
@@ -210,6 +213,11 @@ export type ActiveTool =
  */
 export const activeToolSignal = signal<ActiveTool>("pan");
 
+// Each layer remembers the last Pan or Selection Tool used on it (#389)
+activeToolSignal.subscribe((tool) => {
+  rememberPanSelectTool(activeLayerIdSignal.peek(), tool);
+});
+
 /**
  * @signal editableLayerIdsSignal
  * @description Set of layer identifiers currently enabled for feature digitizing and editing.
@@ -267,12 +275,7 @@ export { activeSelectionModeSignal as selectionModeSignal };
 
 // Automatically revert activeToolSignal to 'pan' if active layer is cleared while digitizing
 activeLayerIdSignal.subscribe((activeId) => {
-  if (
-    activeId === null
-    && (activeToolSignal.value === "point"
-      || activeToolSignal.value === "line"
-      || activeToolSignal.value === "polygon")
-  ) {
+  if (activeId === null && isDigitizingTool(activeToolSignal.value)) {
     activeToolSignal.value = "pan";
   }
 });
@@ -3445,12 +3448,14 @@ export function pasteFeaturesAction(): void {
 
 /**
  * @description Action handler toggling vector feature editing mode for the active or specified layer.
- * If editing is toggled off for the active layer and a digitizing tool is active, resets to 'pan'.
+ * If editing is toggled off for the active layer and a digitizing tool is active, switches to the
+ * layer's last Pan or Selection Tool (Pan if it has none). Toggling editing on for the active layer
+ * while Pan or a Selection Tool is active switches back to the layer's last digitizing tool.
  * Toggling editing off also turns Vertex Editor Mode off for that layer, including its stored
  * Ephemeral Layer Toolbar State.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {string | null} [layerId] - Optional explicit layer ID to toggle; defaults to activeLayerIdSignal.value.
  * @param {Object} [options] - Optional toggle execution settings.
@@ -3475,19 +3480,19 @@ export function toggleLayerEditingAction(
     setLayerToolbarPreference(targetId, "vertexEditorMode", false);
     if (
       activeLayerIdSignal.value === targetId
-      && (activeToolSignal.value === "point"
-        || activeToolSignal.value === "line"
-        || activeToolSignal.value === "polygon")
+      && isDigitizingTool(activeToolSignal.value)
     ) {
       captureLayerToolbarState(targetId);
-      activeToolSignal.value = "pan";
+      activeToolSignal.value =
+        getLayerToolbarPreference<ActiveTool>(targetId, "panSelectTool")
+        ?? "pan";
     }
   } else {
     current.add(targetId);
     editableLayerIdsSignal.value = current;
     if (
       activeLayerIdSignal.value === targetId
-      && activeToolSignal.value === "pan"
+      && isPanOrSelectTool(activeToolSignal.value)
     ) {
       const cached = getLayerToolbarPreference<ActiveTool>(
         targetId,

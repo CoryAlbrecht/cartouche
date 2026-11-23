@@ -1,10 +1,10 @@
 /**
  * @file layerToolbarMemory.test.ts
  * @module tests/renderer/state/layerToolbarMemory.test
- * @description Unit and component tests for ephemeral per-layer toolbar state conservation, caching, restoration, and fallback mechanisms (Ticket #107).
+ * @description Unit and component tests for ephemeral per-layer toolbar state conservation, caching, restoration, and fallback mechanisms (Ticket #107), and per-layer map tool memory (#389).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-27
- * @updated 2026-11-20
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link captureLayerToolbarState}
  * @see {@link restoreLayerToolbarState}
@@ -210,6 +210,7 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
     const layerB = "layer-restore-b";
 
     // Populate layer A preferences
+    setLayerToolbarPreference(layerA, "mapTool", "line");
     setLayerToolbarPreference(layerA, "digitizingTool", "line");
     setLayerToolbarPreference(layerA, "selectionMode", "select_by_lasso");
     setLayerToolbarPreference(layerA, "snappingEnabled", true);
@@ -412,6 +413,91 @@ describe("Ephemeral Per-Layer Toolbar State Conservation (Ticket #107)", () => {
       "polygon",
       "PreferencesStore must keep previously stored digitizingTool"
     );
+  });
+
+  describe("Per-layer map tool memory (#389)", () => {
+    it("keeps the current Select tool when a layer becomes active for the first time", () => {
+      activeLayerIdSignal.value = "tool-a";
+      activeToolSignal.value = "select_rectangle";
+
+      activeLayerIdSignal.value = "tool-fresh";
+
+      assert.strictEqual(activeToolSignal.value, "select_rectangle");
+    });
+
+    it("gives Pan to a layer becoming active for the first time while a digitizing tool is active", () => {
+      editableLayerIdsSignal.value = new Set(["tool-digitize"]);
+      activeLayerIdSignal.value = "tool-digitize";
+      activeToolSignal.value = "line";
+
+      activeLayerIdSignal.value = "tool-fresh-2";
+
+      assert.strictEqual(activeToolSignal.value, "pan");
+    });
+
+    it("keeps the current Select tool across clearing the Active Layer and choosing a new one", () => {
+      activeLayerIdSignal.value = "tool-clear";
+      activeToolSignal.value = "select_rectangle";
+
+      activeLayerIdSignal.value = null;
+      assert.strictEqual(activeToolSignal.value, "select_rectangle");
+
+      activeLayerIdSignal.value = "tool-fresh-3";
+      assert.strictEqual(activeToolSignal.value, "select_rectangle");
+    });
+
+    it("restores each layer's last Pan or Select tool when it becomes active again", () => {
+      activeLayerIdSignal.value = "tool-a";
+      activeToolSignal.value = "select_lasso";
+      activeLayerIdSignal.value = "tool-b";
+      activeToolSignal.value = "pan";
+
+      activeLayerIdSignal.value = "tool-a";
+      assert.strictEqual(activeToolSignal.value, "select_lasso");
+
+      activeLayerIdSignal.value = "tool-b";
+      assert.strictEqual(activeToolSignal.value, "pan");
+    });
+
+    it("restores a layer's last digitizing tool while it is in Layer Edit Mode, otherwise its last Pan or Select tool", () => {
+      editableLayerIdsSignal.value = new Set(["tool-edit"]);
+      activeLayerIdSignal.value = "tool-edit";
+      activeToolSignal.value = "select_click";
+      activeToolSignal.value = "polygon";
+      activeLayerIdSignal.value = "tool-other";
+      activeToolSignal.value = "select_lasso";
+
+      activeLayerIdSignal.value = "tool-edit";
+      assert.strictEqual(activeToolSignal.value, "polygon");
+
+      activeLayerIdSignal.value = "tool-other";
+      editableLayerIdsSignal.value = new Set();
+      activeLayerIdSignal.value = "tool-edit";
+      assert.strictEqual(activeToolSignal.value, "select_click");
+    });
+
+    it("returns to the layer's last Pan or Select tool when Layer Edit Mode is turned off while digitizing", () => {
+      activeLayerIdSignal.value = "tool-toggle";
+      toggleLayerEditingAction("tool-toggle");
+      activeToolSignal.value = "select_rectangle";
+      activeToolSignal.value = "line";
+
+      toggleLayerEditingAction("tool-toggle");
+
+      assert.strictEqual(activeToolSignal.value, "select_rectangle");
+    });
+
+    it("switches back to the layer's last digitizing tool when Layer Edit Mode is turned on while a Select tool is active", () => {
+      activeLayerIdSignal.value = "tool-retoggle";
+      toggleLayerEditingAction("tool-retoggle");
+      activeToolSignal.value = "point";
+      toggleLayerEditingAction("tool-retoggle");
+      activeToolSignal.value = "select_lasso";
+
+      toggleLayerEditingAction("tool-retoggle");
+
+      assert.strictEqual(activeToolSignal.value, "point");
+    });
   });
 
   it("ensures ephemeral per-layer preferences are never written to disk during PreferencesStore.saveToDisk()", () => {
