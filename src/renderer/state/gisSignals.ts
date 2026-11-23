@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for core GIS application state including project management, active layer hierarchy, feature selections, viewport extents, and toolbar placements.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link GisLayer}
  * @see {@link GisFeature}
@@ -85,6 +85,7 @@ import {
   setTimeReckoning,
 } from "./timeFilterSignals";
 import { timeReckoningFromConfig } from "../../shared/time/reckonedTime";
+import { timeReckoningToConfig } from "../../shared/time/timeReckoning";
 import {
   autoDetectTemporalRange,
   computeFrameEnd,
@@ -2144,7 +2145,7 @@ function extractDescriptorsAndStyles(
  * @description Loads a ProjectModel into reactive GIS state signals, activating the project and updating the layer tree.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {ProjectModel} project - The loaded ProjectModel instance.
  * @returns {void}
@@ -2237,7 +2238,13 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
         const stepVal = tf.step !== undefined ? tf.step : 1.0;
         const unitVal = tf.unit || "Days";
         const curStart = tf.current !== undefined ? tf.current : tf.from!;
-        const curEnd = computeFrameEnd(curStart, stepVal, unitVal, tf.to!);
+        const curEnd = computeFrameEnd(
+          curStart,
+          stepVal,
+          unitVal,
+          tf.to!,
+          timeReckoningSignal.value
+        );
         setTimeFilterFrame(curStart, curEnd);
       } else if (hasTemporalLayer) {
         void autoDetectTemporalRange(descriptors)
@@ -2251,7 +2258,8 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
                 curStart,
                 stepVal,
                 unitVal,
-                range.to
+                range.to,
+                timeReckoningSignal.value
               );
               setTimeFilterFrame(curStart, curEnd);
             }
@@ -2273,7 +2281,13 @@ export function loadProjectIntoSignals(project: ProjectModel): void {
           if (range) {
             setTimeFilterRange(range.from, range.to);
             const curStart = range.from;
-            const curEnd = computeFrameEnd(curStart, 1.0, "Days", range.to);
+            const curEnd = computeFrameEnd(
+              curStart,
+              1.0,
+              "Days",
+              range.to,
+              timeReckoningSignal.value
+            );
             setTimeFilterFrame(curStart, curEnd);
           }
         })
@@ -2406,7 +2420,7 @@ function adoptFileNameForDefaultTitle(savedPath: string): void {
  * @description Action handler saving active project to disk. If loaded, writes directly; if untitled, prompts with native save dialog.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2445,7 +2459,7 @@ export async function saveProjectAction(): Promise<boolean> {
       current: timeFilterFrameStartSignal.value,
       step: timeFilterStepSignal.value,
       unit: timeFilterUnitSignal.value,
-      ...timeReckoningSignal.value,
+      ...timeReckoningToConfig(timeReckoningSignal.value),
     };
     if (currentProjectSignal.value) {
       currentProjectSignal.value.viewport = viewport;
@@ -2476,7 +2490,7 @@ export async function saveProjectAction(): Promise<boolean> {
  * @description Action handler requesting project file Save As flow, prompting user with native save dialog with existing path prefilled.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-09-21
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @returns {Promise<boolean>} True if project saved, false if canceled or failed.
  */
@@ -2512,7 +2526,7 @@ export async function saveAsProjectAction(): Promise<boolean> {
       current: timeFilterFrameStartSignal.value,
       step: timeFilterStepSignal.value,
       unit: timeFilterUnitSignal.value,
-      ...timeReckoningSignal.value,
+      ...timeReckoningToConfig(timeReckoningSignal.value),
     };
     if (currentProjectSignal.value) {
       currentProjectSignal.value.viewport = viewport;

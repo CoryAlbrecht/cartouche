@@ -303,6 +303,12 @@
     <string name="time_reckoning_counting">Era Counting</string>
     <string name="time_reckoning_counting_dates">Dates</string>
     <string name="time_reckoning_counting_durations">Durations</string>
+    <string name="time_filter_from">From</string>
+    <string name="time_filter_to">To</string>
+    <string name="spinner_era">Era</string>
+    <string name="spinner_number">Number</string>
+    <string name="spinner_increment_value">Increment value</string>
+    <string name="spinner_decrement_value">Decrement value</string>
     <string name="layer_properties_time_field_mismatch">The configured fields don't suit the project's Time Reckoning, so this layer's features are Undated Features and always shown.</string>
     <string name="project_properties_tab_crs">CRS</string>
     <string name="project_properties_crs_none">No CRS (or unknown/non-Earth projection)</string>

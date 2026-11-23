@@ -249,6 +249,12 @@
     <string name="time_reckoning_counting">Décompte de l'ère</string>
     <string name="time_reckoning_counting_dates">Dates</string>
     <string name="time_reckoning_counting_durations">Durées</string>
+    <string name="time_filter_from">Du</string>
+    <string name="time_filter_to">Au</string>
+    <string name="spinner_era">Ère</string>
+    <string name="spinner_number">Nombre</string>
+    <string name="spinner_increment_value">Augmenter la valeur</string>
+    <string name="spinner_decrement_value">Diminuer la valeur</string>
     <string name="layer_properties_time_field_mismatch">Les champs configurés ne conviennent pas au système de datation du projet : les entités de cette couche sont des entités non datées, toujours affichées.</string>
     <string name="project_properties_tab_crs">SCR</string>
     <string name="project_properties_crs_none">Aucun SCR (inconnu ou non terrestre)</string>

@@ -4,7 +4,7 @@
  * @description Tests for the Time Reckoning settings of the Project Properties Time Filter tab and for the range controls in each Time Reckoning (#397): the Time Reckoning dropdown lists the nine choices, a preset Calendar shows its Era read-only, a Custom Era makes the Era fields editable, Plain Number hides them; the range controls show era spinners in a Calendar or Custom Era and plain number spinners with the Unit disabled in Plain Number.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimeReckoningControls}
  * @see {@link TimeFilterRangeStepControls}
@@ -31,8 +31,8 @@ const { TimeFilterRangeStepControls } = jiti(
 );
 
 const GREGORY: TimeReckoning = { ...GREGORIAN_TIME_RECKONING };
-const CUSTOM: TimeReckoning = { reckoning: "custom", ...DEFAULT_CUSTOM_ERA };
-const NUMBER: TimeReckoning = { ...GREGORY, reckoning: "number" };
+const CUSTOM: TimeReckoning = { kind: "custom", ...DEFAULT_CUSTOM_ERA };
+const NUMBER: TimeReckoning = { ...GREGORY, kind: "number" };
 
 /**
  * @function renderReckoning

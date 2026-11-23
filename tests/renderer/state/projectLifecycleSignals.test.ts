@@ -4,7 +4,7 @@
  * @description Unit tests for Renderer project lifecycle actions (saveProjectAction, saveAsProjectAction, closeProjectAction, openProjectAction), including the Time Reckoning loaded from and saved to `<timeFilter>` (#397).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-13
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
 
@@ -150,7 +150,7 @@ describe("Project Lifecycle Signals & Actions", () => {
         eraCounting: "durations",
       },
     });
-    assert.equal(timeReckoningSignal.value.reckoning, "custom");
+    assert.equal(timeReckoningSignal.value.kind, "custom");
     assert.equal(timeReckoningSignal.value.zeroTime, 42);
     assert.equal(timeFilterRangeStartSignal.value, -1000);
 
@@ -166,7 +166,7 @@ describe("Project Lifecycle Signals & Actions", () => {
   it("a project without a reckoning loads as Gregorian (Ticket #397)", () => {
     timeReckoningSignal.value = {
       ...timeReckoningSignal.value,
-      reckoning: "number",
+      kind: "number",
     };
     loadProjectIntoSignals({
       format: "cartouche-xml",
@@ -175,7 +175,7 @@ describe("Project Lifecycle Signals & Actions", () => {
       layers: [],
       timeFilter: { enabled: false, from: 0, to: 1000, step: 1, unit: "Days" },
     });
-    assert.equal(timeReckoningSignal.value.reckoning, "gregory");
+    assert.equal(timeReckoningSignal.value.kind, "gregory");
     assert.equal(timeReckoningSignal.value.eraLabelAfter, "CE");
   });
 

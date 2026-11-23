@@ -4,7 +4,7 @@
  * @description Tests for the Project Properties draft store (ADR 0024): opening seeds the draft from the committed state, edits stay in the draft, Apply commits through one IPC round trip and sets the Project Dirty State, Cancel/Close roll back, the draft survives tab switches, and the Workbench window title falls back to the project file's base name when the title is empty.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link projectPropertiesDraftSignal}
  * @see {@link applyProjectPropertiesEdits}
@@ -471,11 +471,11 @@ describe("projectPropertiesSignals draft store (Ticket #271)", () => {
     setTimeFilterFrame(4000, 5000);
     openProjectPropertiesDialog();
     assert.equal(
-      projectPropertiesDraftSignal.value.timeReckoning.reckoning,
+      projectPropertiesDraftSignal.value.timeReckoning.kind,
       "gregory"
     );
     const custom = {
-      reckoning: "custom",
+      kind: "custom",
       zeroTime: 123,
       eraLabelAfter: "AF",
       eraLabelBefore: "BF",
@@ -484,7 +484,7 @@ describe("projectPropertiesSignals draft store (Ticket #271)", () => {
     };
     updateProjectPropertiesDraft({ timeReckoning: custom });
     assert.equal(
-      timeReckoningSignal.value.reckoning,
+      timeReckoningSignal.value.kind,
       "gregory",
       "untouched before Apply"
     );

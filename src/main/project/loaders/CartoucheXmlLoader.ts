@@ -4,7 +4,7 @@
  * @description Project loader implementation deserializing and serializing unbundled XML project documents conforming to project.xsd.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link IProjectLoader}
  * @see {@link ProjectModel}
@@ -60,7 +60,10 @@ import {
   type ProjectTimeFilterConfig,
   type TimeFilterUnit,
 } from "../../../shared/types";
-import { resolveTimeReckoning } from "../../../shared/time/timeReckoning";
+import {
+  resolveTimeReckoning,
+  timeReckoningToConfig,
+} from "../../../shared/time/timeReckoning";
 
 /**
  * @description Escapes special XML characters in string values to prevent XML syntax errors.
@@ -151,7 +154,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Reads and parses an XML project document from disk into a ProjectModel object.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-03
-   * @updated 2026-11-22
+   * @updated 2026-11-23
    * @since 0.1.0-dev
    * @param {string} filePath - Path to XML document on disk.
    * @returns {Promise<ProjectModel>} Deserialized project model.
@@ -738,20 +741,22 @@ export class CartoucheXmlLoader implements IProjectLoader {
             : parseFloat(tf["@_step"])
           : 1.0,
         unit: (tf["@_unit"] as TimeFilterUnit) || "Days",
-        ...resolveTimeReckoning({
-          reckoning: tf["@_reckoning"],
-          zeroTime: parseNum(tf["@_zeroTime"]),
-          eraLabelAfter:
-            tf["@_eraLabelAfter"] !== undefined ?
-              String(tf["@_eraLabelAfter"])
-            : undefined,
-          eraLabelBefore:
-            tf["@_eraLabelBefore"] !== undefined ?
-              String(tf["@_eraLabelBefore"])
-            : undefined,
-          eraLabelPosition: tf["@_eraLabelPosition"],
-          eraCounting: tf["@_eraCounting"],
-        }),
+        ...timeReckoningToConfig(
+          resolveTimeReckoning({
+            reckoning: tf["@_reckoning"],
+            zeroTime: parseNum(tf["@_zeroTime"]),
+            eraLabelAfter:
+              tf["@_eraLabelAfter"] !== undefined ?
+                String(tf["@_eraLabelAfter"])
+              : undefined,
+            eraLabelBefore:
+              tf["@_eraLabelBefore"] !== undefined ?
+                String(tf["@_eraLabelBefore"])
+              : undefined,
+            eraLabelPosition: tf["@_eraLabelPosition"],
+            eraCounting: tf["@_eraCounting"],
+          })
+        ),
       };
     }
 
@@ -795,7 +800,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
    * @description Generates valid XML text from a ProjectModel strictly conforming to project.xsd schema.
    * @author Cory Albrecht <cory@albrecht.name>
    * @date 2026-10-13
-   * @updated 2026-11-22
+   * @updated 2026-11-23
    * @since 0.1.0-dev
    * @param {ProjectModel} project - In-memory project model.
    * @param {string} [targetPath] - Destination project file path; with `project.filePath` as fallback it anchors the Project Home and relative paths. Without either, paths are written as held in memory.
@@ -1241,7 +1246,7 @@ export class CartoucheXmlLoader implements IProjectLoader {
       // Every save writes the whole Time Reckoning, completed with its defaults (#397).
       const reckoning = resolveTimeReckoning(tf);
       tfAttrs.push(
-        `reckoning="${escapeXml(reckoning.reckoning)}"`,
+        `reckoning="${escapeXml(reckoning.kind)}"`,
         `zeroTime="${reckoning.zeroTime}"`,
         `eraLabelAfter="${escapeXml(reckoning.eraLabelAfter)}"`,
         `eraLabelBefore="${escapeXml(reckoning.eraLabelBefore)}"`,

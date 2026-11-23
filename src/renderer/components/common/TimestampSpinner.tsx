@@ -4,7 +4,7 @@
  * @description Discrete, segmented numeric input component providing non-cascading editing of a UTC epoch millisecond instant shown in the project's Time Reckoning (preset Calendar or Custom Era, ADR 0038), with a leading era part. The exported Gregorian part helpers remain for callers that need plain Gregorian UTC parts.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimestampSpinner}
  * @see {@link UtcTimestampParts}
@@ -19,15 +19,16 @@
  * @see {@link usePendingDigits}
  * @see {@link toReckonedParts}
  * @see {@link fromReckonedParts}
+ * @see {@link SpinnerStepButtons}
  */
 
 import React, { useState, useRef, type JSX } from "react";
-import Icon from "@renderer/components/common/Icon";
+import { SpinnerStepButtons } from "@renderer/components/common/SpinnerStepButtons";
 import {
   usePendingDigits,
   type PendingDigits,
 } from "@renderer/hooks/usePendingDigits";
-import { mdiChevronUp, mdiChevronDown } from "@mdi/js";
+import { t } from "@renderer/state/i18nSignals";
 import {
   toReckonedParts,
   fromReckonedParts,
@@ -355,10 +356,10 @@ function segmentMaxLength(seg: TimestampSegmentType): number {
 
 /**
  * @component TimestampSpinner
- * @description Discrete non-cascading segmented timestamp spinner showing an instant in the project's Time Reckoning (ADR 0038) as a leading era part plus year, month, day, hour, minute and second. Up, Down or Space on the era part switches the side of the Zero Time (keeping the year number); `+`, `-` or the first letter of an Era Label sets it. Typed digits show as typed and are checked, limited and saved (firing `onChange`) only after a 1000 ms pause or on Tab, an arrow key, Enter or blur; Escape discards them. Only a full two-digit segment auto-advances.
+ * @description Discrete non-cascading segmented timestamp spinner showing an instant in the project's Time Reckoning (ADR 0038) as a leading era part plus year, month, day, hour, minute and second. Up, Down or Space on the era part switches the side of the Zero Time (keeping the year number). On the era part, `+`, `-` or the first letter of an Era Label sets the side; in the numeric segments only `+` and `-` do, since letters there are ignored. Typed digits show as typed and are checked, limited and saved (firing `onChange`) only after a 1000 ms pause or on Tab, an arrow key, Enter or blur; Escape discards them. Only a full two-digit segment auto-advances.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {TimestampSpinnerProps} props - Component properties.
  * @returns {JSX.Element} The rendered timestamp spinner component.
@@ -671,7 +672,7 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
         type='text'
         readOnly
         data-segment='era'
-        aria-label='Era'
+        aria-label={t("spinner_era")}
         value={eraLabelFor(parts.side, reckoning)}
         disabled={disabled}
         tabIndex={disabled ? -1 : 0}
@@ -705,35 +706,12 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       <span className='timestamp-spinner-divider'>:</span>
       {renderSegmentInput("second", parts.second, "Second")}
 
-      {/* Vertical Spinner Up/Down Buttons */}
-      <div className='timestamp-spinner-buttons'>
-        <button
-          type='button'
-          tabIndex={-1}
-          aria-label='Increment segment'
-          className='timestamp-spinner-btn timestamp-spinner-btn-up'
-          disabled={disabled}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => handleStep(1)}>
-          <Icon
-            path={mdiChevronUp}
-            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-          />
-        </button>
-        <button
-          type='button'
-          tabIndex={-1}
-          aria-label='Decrement segment'
-          className='timestamp-spinner-btn timestamp-spinner-btn-down'
-          disabled={disabled}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => handleStep(-1)}>
-          <Icon
-            path={mdiChevronDown}
-            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-          />
-        </button>
-      </div>
+      <SpinnerStepButtons
+        onStep={handleStep}
+        incrementLabel='Increment segment'
+        decrementLabel='Decrement segment'
+        disabled={disabled}
+      />
     </div>
   );
 };

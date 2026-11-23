@@ -1,10 +1,10 @@
 /**
  * @file reckonedTime.test.ts
  * @module tests/shared/time/reckonedTime.test
- * @description Tests for showing, editing and stepping Time Filter instants in a Time Reckoning (#397, ADR 0038): Gregorian with BCE and no year zero, Custom Era Dates and Durations, era side switching and keys, segment limits, Plain Number text, and — inside Electron, which provides `Temporal` — the preset Calendars (Hebrew leap month 13, Ethiopian month 13, Islamic, Persian, Coptic, Buddhist), their Eras and their Months / Years arithmetic.
+ * @description Tests for showing, editing and stepping Time Filter instants in a Time Reckoning (#397, ADR 0038): Gregorian with BCE and no year zero, Custom Era Dates and Durations, era side switching and keys, segment limits, symbol Era Labels always before the value, Plain Number text and stepping noise, and — inside Electron, which provides `Temporal` — the preset Calendars (Hebrew leap month 13, Ethiopian month 13, Islamic, Persian, Coptic, Buddhist), their Eras (Islamic BH, Ethiopian Amete Alem years before AM 1) and their Months / Years arithmetic.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link toReckonedParts}
  * @see {@link fromReckonedParts}
@@ -25,6 +25,7 @@ import {
   presetCalendarEra,
   stepCalendarInstant,
   timeReckoningFor,
+  roundStepNoise,
   type ReckonedParts,
 } from "../../../src/shared/time/reckonedTime";
 import {
@@ -57,19 +58,19 @@ function utc(year: number, month: number, day: number, hour = 0): number {
 
 const GREGORY: TimeReckoning = { ...GREGORIAN_TIME_RECKONING };
 const RELATIVE: TimeReckoning = {
-  reckoning: "custom",
+  kind: "custom",
   ...DEFAULT_CUSTOM_ERA,
   zeroTime: utc(2000, 1, 1),
 };
 const FOUNDING: TimeReckoning = {
-  reckoning: "custom",
+  kind: "custom",
   zeroTime: utc(2000, 3, 15),
   eraLabelAfter: "AF",
   eraLabelBefore: "BF",
   eraLabelPosition: "suffix",
   eraCounting: "dates",
 };
-const NUMBER: TimeReckoning = { ...GREGORY, reckoning: "number" };
+const NUMBER: TimeReckoning = { ...GREGORY, kind: "number" };
 
 describe("Gregorian Time Reckoning", () => {
   it("shows CE dates with a CE suffix", () => {
@@ -215,7 +216,7 @@ describe("Custom Era", () => {
     assert.equal(reckonedSegmentRange(dates, "day", FOUNDING).min, 1);
   });
 
-  it("puts symbol labels next to the value and word labels a space away", () => {
+  it("puts word labels a space away, before or after as set", () => {
     const prefixWord: TimeReckoning = {
       ...FOUNDING,
       eraLabelPosition: "prefix",
@@ -224,13 +225,24 @@ describe("Custom Era", () => {
       formatInstant(utc(2000, 3, 15), prefixWord),
       "AF 1-01-01 00:00:00"
     );
+    assert.equal(
+      formatInstant(utc(2000, 3, 15), FOUNDING),
+      "1-01-01 00:00:00 AF"
+    );
+  });
+
+  it("always puts symbol labels right before the value, whatever the position", () => {
     const suffixSymbol: TimeReckoning = {
       ...RELATIVE,
       eraLabelPosition: "suffix",
     };
     assert.equal(
       formatInstant(utc(2000, 1, 2), suffixSymbol),
-      "0-00-01 00:00:00+"
+      "+0-00-01 00:00:00"
+    );
+    assert.equal(
+      formatInstant(utc(1999, 12, 31), suffixSymbol),
+      "−0-00-01 00:00:00"
     );
   });
 });
@@ -266,6 +278,15 @@ describe("Plain Number", () => {
       "9007199254740991"
     );
   });
+
+  it("stepping noise is rounded away, integers are left exact", () => {
+    assert.equal(roundStepNoise(0.1 + 0.2), 0.3);
+    assert.equal(
+      roundStepNoise(Number.MAX_SAFE_INTEGER),
+      Number.MAX_SAFE_INTEGER
+    );
+    assert.equal(roundStepNoise(-2.5), -2.5);
+  });
 });
 
 describe("Choosing a Time Reckoning", () => {
@@ -275,10 +296,10 @@ describe("Choosing a Time Reckoning", () => {
 
   it("Custom Era and Plain Number keep the Era fields shown before", () => {
     const custom = timeReckoningFor("custom", GREGORY);
-    assert.equal(custom.reckoning, "custom");
+    assert.equal(custom.kind, "custom");
     assert.equal(custom.eraLabelAfter, "CE");
     const plain = timeReckoningFor("number", FOUNDING);
-    assert.equal(plain.reckoning, "number");
+    assert.equal(plain.kind, "number");
     assert.equal(plain.zeroTime, FOUNDING.zeroTime);
   });
 });
@@ -343,7 +364,32 @@ describeWithTemporal("Preset Calendars (Temporal)", import.meta.url, () => {
     assert.equal(hebrew.eraCounting, "dates");
     assert.equal(reckoningOf("islamic-civil").eraLabelAfter, "AH");
     assert.equal(reckoningOf("islamic-civil").zeroTime, utc(622, 7, 19));
-    assert.equal(reckoningOf("ethiopic").eraLabelBefore, "−");
+    assert.equal(reckoningOf("ethiopic").eraLabelBefore, "AA");
+  });
+
+  it("Islamic dates before 1 AH are labelled BH", () => {
+    assert.equal(reckoningOf("islamic-civil").eraLabelBefore, "BH");
+  });
+
+  it("Ethiopian dates before AM 1 count Amete Alem years", () => {
+    const ethiopic = reckoningOf("ethiopic");
+    const zero = ethiopic.zeroTime;
+    const dayBefore = toReckonedParts(zero - DAY, ethiopic);
+    assert.deepEqual(
+      [dayBefore.side, dayBefore.year, dayBefore.month, dayBefore.day],
+      ["before", 5500, 13, 5]
+    );
+    assert.equal(formatInstant(zero - DAY, ethiopic), "5500-13-05 00:00:00 AA");
+    assert.equal(fromReckonedParts(dayBefore, ethiopic), zero - DAY);
+    assert.deepEqual(
+      reckonedSegmentRange(dayBefore, "year", ethiopic).max,
+      5500
+    );
+    // Switching AM 2016 to the before side lands on AA 2016, which round-trips.
+    const am = toReckonedParts(utc(2024, 3, 15), ethiopic);
+    const aa = switchEraSide(am);
+    const back = toReckonedParts(fromReckonedParts(aa, ethiopic), ethiopic);
+    assert.deepEqual([back.side, back.year], ["before", 2016]);
   });
 
   it("dates before a Calendar's year 1 use the before label with no year zero", () => {

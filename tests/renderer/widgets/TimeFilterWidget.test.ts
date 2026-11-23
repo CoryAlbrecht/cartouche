@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimeFilterWidget verifying docking registration, transport controls, auto-range aggregation, calendar-aware arithmetic, and micro-decimal stepping.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link isProjectDirtySignal}
@@ -77,6 +77,7 @@ const {
   setTimeFilterStep,
   resetTimeFilterState,
   setTimeReckoning,
+  timeReckoningSignal,
 } = jiti(
   "@renderer/state/timeFilterSignals"
 ) as typeof import("@renderer/state/timeFilterSignals");
@@ -323,13 +324,23 @@ describe("TimeFilterWidget: Step Unit Dropdown Reactivity (Ticket #239)", () => 
     setTimeFilterStep(5, "Seconds");
     assert.strictEqual(timeFilterUnitSignal.value, "Seconds");
     assert.strictEqual(timeFilterStepSignal.value, 5);
-    const targetSec = stepTemporalTimestamp(1_000_000, 5, "Seconds");
+    const targetSec = stepTemporalTimestamp(
+      1_000_000,
+      5,
+      "Seconds",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(targetSec, 1_000_000 + 5_000);
 
     // Step under 'Hours' (1 step = 3,600,000 ms)
     setTimeFilterStep(2, "Hours");
     assert.strictEqual(timeFilterUnitSignal.value, "Hours");
-    const targetHours = stepTemporalTimestamp(1_000_000, 2, "Hours");
+    const targetHours = stepTemporalTimestamp(
+      1_000_000,
+      2,
+      "Hours",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(targetHours, 1_000_000 + 7_200_000);
   });
 });
@@ -521,7 +532,12 @@ describe("TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     // 1. Initial 1.0 second forward step (1,000 ms)
     let s = timeFilterStepSignal.value;
     let u = timeFilterUnitSignal.value;
-    let target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    let target = stepTemporalTimestamp(
+      timeFilterFrameStartSignal.value,
+      s,
+      u,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(target, target);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_001_000);
 
@@ -529,7 +545,12 @@ describe("TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     setTimeFilterStep(10.0, "Seconds");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
-    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    target = stepTemporalTimestamp(
+      timeFilterFrameStartSignal.value,
+      s,
+      u,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(target, target);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_011_000);
 
@@ -537,7 +558,12 @@ describe("TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     setTimeFilterStep(2.5, "Seconds");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
-    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, -s, u);
+    target = stepTemporalTimestamp(
+      timeFilterFrameStartSignal.value,
+      -s,
+      u,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(target, target);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_008_500);
 
@@ -545,7 +571,12 @@ describe("TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     setTimeFilterStep(0.5, "Hours");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
-    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    target = stepTemporalTimestamp(
+      timeFilterFrameStartSignal.value,
+      s,
+      u,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(target, target);
     assert.strictEqual(timeFilterFrameStartSignal.value, 2_808_500);
 
@@ -553,7 +584,12 @@ describe("TimeFilterWidget: Reactive Numeric Step Editing & Stepping (Ticket #24
     setTimeFilterStep(MIN_TIME_FILTER_STEP, "Years");
     s = timeFilterStepSignal.value;
     u = timeFilterUnitSignal.value;
-    target = stepTemporalTimestamp(timeFilterFrameStartSignal.value, s, u);
+    target = stepTemporalTimestamp(
+      timeFilterFrameStartSignal.value,
+      s,
+      u,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(target, target);
     assert.strictEqual(timeFilterFrameStartSignal.value, 2_809_497);
   });
@@ -682,16 +718,21 @@ describe("TimeFilterWidget: Editable From and To Range Spinners (Ticket #243)", 
     );
   });
 
-  it("retains userSelect: text on TimestampSpinner segment inputs and wrapper containers", () => {
+  it("retains selectable text on the TimestampSpinners and their From / To fields", () => {
     const markup = renderToStaticMarkup(
       React.createElement(TimeFilterWidget, {})
     );
 
-    assert.ok(
-      markup.includes("user-select:text")
-        || markup.includes("user-select: text"),
-      "TimestampSpinner segment inputs must retain userSelect: text within TimeFilterWidget container"
+    assert.equal(
+      (markup.match(/class="time-filter-range-field"/g) ?? []).length,
+      2,
+      "From and To fields render"
     );
+    assert.equal(
+      classDeclaration("time-filter-range-field", "user-select"),
+      "text"
+    );
+    assert.equal(classDeclaration("timestamp-spinner", "user-select"), "text");
   });
 });
 
@@ -1273,35 +1314,75 @@ describe("TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket 
     const baseMs = Date.UTC(2026, 5, 1, 12, 0, 0, 0);
 
     // 1. Milliseconds
-    const msStep = stepTemporalTimestamp(baseMs, 50, "Milliseconds");
+    const msStep = stepTemporalTimestamp(
+      baseMs,
+      50,
+      "Milliseconds",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(msStep, baseMs + 50);
 
     // 2. Seconds
-    const secStep = stepTemporalTimestamp(baseMs, 10, "Seconds");
+    const secStep = stepTemporalTimestamp(
+      baseMs,
+      10,
+      "Seconds",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(secStep, baseMs + 10_000);
 
     // 3. Minutes
-    const minStep = stepTemporalTimestamp(baseMs, 5, "Minutes");
+    const minStep = stepTemporalTimestamp(
+      baseMs,
+      5,
+      "Minutes",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(minStep, baseMs + 5 * 60_000);
 
     // 4. Hours
-    const hrStep = stepTemporalTimestamp(baseMs, 2, "Hours");
+    const hrStep = stepTemporalTimestamp(
+      baseMs,
+      2,
+      "Hours",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(hrStep, baseMs + 2 * 3_600_000);
 
     // 5. Days
-    const dayStep = stepTemporalTimestamp(baseMs, 3, "Days");
+    const dayStep = stepTemporalTimestamp(
+      baseMs,
+      3,
+      "Days",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(dayStep, baseMs + 3 * 86_400_000);
 
     // 6. Weeks
-    const weekStep = stepTemporalTimestamp(baseMs, 2, "Weeks");
+    const weekStep = stepTemporalTimestamp(
+      baseMs,
+      2,
+      "Weeks",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(weekStep, baseMs + 14 * 86_400_000);
 
     // 7. Months
-    const monthStep = stepTemporalTimestamp(baseMs, 1, "Months");
+    const monthStep = stepTemporalTimestamp(
+      baseMs,
+      1,
+      "Months",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(monthStep, Date.UTC(2026, 6, 1, 12, 0, 0, 0));
 
     // 8. Years
-    const yearStep = stepTemporalTimestamp(baseMs, 1, "Years");
+    const yearStep = stepTemporalTimestamp(
+      baseMs,
+      1,
+      "Years",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(yearStep, Date.UTC(2027, 5, 1, 12, 0, 0, 0));
   });
 
@@ -1310,11 +1391,23 @@ describe("TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket 
     const rangeEnd = 1_050_000;
 
     // Unclamped (1_000_000 + 10_000 = 1_010_000 <= 1_050_000)
-    const end1 = computeFrameEnd(start, 10, "Seconds", rangeEnd);
+    const end1 = computeFrameEnd(
+      start,
+      10,
+      "Seconds",
+      rangeEnd,
+      timeReckoningSignal.value
+    );
     assert.strictEqual(end1, 1_010_000);
 
     // Clamped to rangeEnd (1_000_000 + 100_000 = 1_100_000 > 1_050_000)
-    const end2 = computeFrameEnd(start, 100, "Seconds", rangeEnd);
+    const end2 = computeFrameEnd(
+      start,
+      100,
+      "Seconds",
+      rangeEnd,
+      timeReckoningSignal.value
+    );
     assert.strictEqual(end2, rangeEnd);
   });
 
@@ -1353,15 +1446,37 @@ describe("TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket 
     assert.strictEqual(timeFilterFrameEndSignal.value, expectedEnd);
 
     // Step Forward: advances start to 1_005_000, end to 1_010_000
-    const nextStart = stepTemporalTimestamp(rangeStart, 5, "Seconds");
-    const nextEnd = computeFrameEnd(nextStart, 5, "Seconds", rangeEnd);
+    const nextStart = stepTemporalTimestamp(
+      rangeStart,
+      5,
+      "Seconds",
+      timeReckoningSignal.value
+    );
+    const nextEnd = computeFrameEnd(
+      nextStart,
+      5,
+      "Seconds",
+      rangeEnd,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(nextStart, nextEnd);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_005_000);
     assert.strictEqual(timeFilterFrameEndSignal.value, 1_010_000);
 
     // Step Backward: returns to 1_000_000, 1_005_000
-    const prevStart = stepTemporalTimestamp(nextStart, -5, "Seconds");
-    const prevEnd = computeFrameEnd(prevStart, 5, "Seconds", rangeEnd);
+    const prevStart = stepTemporalTimestamp(
+      nextStart,
+      -5,
+      "Seconds",
+      timeReckoningSignal.value
+    );
+    const prevEnd = computeFrameEnd(
+      prevStart,
+      5,
+      "Seconds",
+      rangeEnd,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(prevStart, prevEnd);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_000_000);
     assert.strictEqual(timeFilterFrameEndSignal.value, 1_005_000);
@@ -1369,9 +1484,15 @@ describe("TimeFilterWidget: Frame Duration Window & Multi-Unit Stepping (Ticket 
     // Jump to End: sets [rangeEnd - 5s, rangeEnd]
     const endStart = Math.max(
       rangeStart,
-      stepTemporalTimestamp(rangeEnd, -5, "Seconds")
+      stepTemporalTimestamp(rangeEnd, -5, "Seconds", timeReckoningSignal.value)
     );
-    const endEnd = computeFrameEnd(endStart, 5, "Seconds", rangeEnd);
+    const endEnd = computeFrameEnd(
+      endStart,
+      5,
+      "Seconds",
+      rangeEnd,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(endStart, endEnd);
     assert.strictEqual(timeFilterFrameStartSignal.value, 1_995_000);
     assert.strictEqual(timeFilterFrameEndSignal.value, rangeEnd);
@@ -1539,14 +1660,42 @@ describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantic
   });
 
   it("computeTemporalStepAttribute computes exact millisecond step for fixed units and 1 for calendar-variable units", () => {
-    assert.strictEqual(computeTemporalStepAttribute(50, "Milliseconds"), 50);
-    assert.strictEqual(computeTemporalStepAttribute(5, "Seconds"), 5000);
-    assert.strictEqual(computeTemporalStepAttribute(2.5, "Minutes"), 150000);
-    assert.strictEqual(computeTemporalStepAttribute(3, "Hours"), 10800000);
-    assert.strictEqual(computeTemporalStepAttribute(1, "Days"), 86400000);
-    assert.strictEqual(computeTemporalStepAttribute(2, "Weeks"), 1209600000);
-    assert.strictEqual(computeTemporalStepAttribute(1, "Months"), 1);
-    assert.strictEqual(computeTemporalStepAttribute(1, "Years"), 1);
+    assert.strictEqual(
+      computeTemporalStepAttribute(
+        50,
+        "Milliseconds",
+        timeReckoningSignal.value
+      ),
+      50
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(5, "Seconds", timeReckoningSignal.value),
+      5000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(2.5, "Minutes", timeReckoningSignal.value),
+      150000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(3, "Hours", timeReckoningSignal.value),
+      10800000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(1, "Days", timeReckoningSignal.value),
+      86400000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(2, "Weeks", timeReckoningSignal.value),
+      1209600000
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(1, "Months", timeReckoningSignal.value),
+      1
+    );
+    assert.strictEqual(
+      computeTemporalStepAttribute(1, "Years", timeReckoningSignal.value),
+      1
+    );
   });
 
   it("renders slider with step matching step control multiplied by unit", () => {
@@ -1576,14 +1725,24 @@ describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantic
     const start = Date.UTC(2026, 9, 20, 14, 0, 0); // 2026-10-20 14:00:00 UTC
     const end = Date.UTC(2027, 9, 20, 14, 0, 0);
 
-    const plusOneMonth = stepTemporalTimestamp(start, 1, "Months");
+    const plusOneMonth = stepTemporalTimestamp(
+      start,
+      1,
+      "Months",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(
       plusOneMonth,
       Date.UTC(2026, 10, 20, 14, 0, 0),
       "Adding 1 month to 2026-10-20 must produce 2026-11-20"
     );
 
-    const minusTwoDays = stepTemporalTimestamp(start, -2, "Days");
+    const minusTwoDays = stepTemporalTimestamp(
+      start,
+      -2,
+      "Days",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(
       minusTwoDays,
       Date.UTC(2026, 9, 18, 14, 0, 0),
@@ -1592,7 +1751,14 @@ describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantic
 
     // Verify snapToTemporalStep snaps a position closer to 2026-11-20
     const midway = start + 25 * 86400000;
-    const snapped = snapToTemporalStep(midway, start, end, 1, "Months");
+    const snapped = snapToTemporalStep(
+      midway,
+      start,
+      end,
+      1,
+      "Months",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(
       snapped,
       Date.UTC(2026, 10, 20, 14, 0, 0),
@@ -1610,12 +1776,20 @@ describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantic
       rStart,
       rEnd,
       1,
-      "Days"
+      "Days",
+      timeReckoningSignal.value
     );
     assert.strictEqual(underflow, rStart, "Underflow must clamp to rangeStart");
 
     // Overflow
-    const overflow = snapToTemporalStep(rEnd + 100000, rStart, rEnd, 1, "Days");
+    const overflow = snapToTemporalStep(
+      rEnd + 100000,
+      rStart,
+      rEnd,
+      1,
+      "Days",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(overflow, rEnd, "Overflow must clamp to rangeEnd");
   });
 
@@ -1626,7 +1800,8 @@ describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantic
     const stepped = stepTemporalTimestamp(
       rStart,
       MIN_TIME_FILTER_STEP,
-      "Years"
+      "Years",
+      timeReckoningSignal.value
     );
     assert.ok(stepped > rStart, "Micro-decimal step must advance timestamp");
     const deltaMs = stepped - rStart;
@@ -1636,11 +1811,21 @@ describe("TimeFilterWidget: Calendar-Aware Slider Stepping via Temporal Semantic
     );
 
     // Sub-day Milliseconds stepping
-    const msStepped = stepTemporalTimestamp(rStart, 50, "Milliseconds");
+    const msStepped = stepTemporalTimestamp(
+      rStart,
+      50,
+      "Milliseconds",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(msStepped, rStart + 50);
 
     // Sub-day Seconds stepping
-    const secStepped = stepTemporalTimestamp(rStart, 15, "Seconds");
+    const secStepped = stepTemporalTimestamp(
+      rStart,
+      15,
+      "Seconds",
+      timeReckoningSignal.value
+    );
     assert.strictEqual(secStepped, rStart + 15000);
   });
 });
@@ -2285,7 +2470,7 @@ describe("TimeFilterWidget: Time Reckoning (Ticket #397)", () => {
 
   it("shows the Current Frame and slider value text in a Custom Era", () => {
     setTimeReckoning({
-      reckoning: "custom",
+      kind: "custom",
       zeroTime: Date.UTC(2000, 0, 1),
       eraLabelAfter: "+",
       eraLabelBefore: "−",
@@ -2310,7 +2495,7 @@ describe("TimeFilterWidget: Time Reckoning (Ticket #397)", () => {
 
   it("shows plain numbers and number spinners in Plain Number", () => {
     setTimeReckoning({
-      reckoning: "number",
+      kind: "number",
       zeroTime: 0,
       eraLabelAfter: "+",
       eraLabelBefore: "−",

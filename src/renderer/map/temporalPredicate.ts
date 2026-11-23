@@ -4,7 +4,7 @@
  * @description Pure temporal predicate evaluation engine testing vector feature attributes against the active temporal frame window, and the one "is this feature displayed now" predicate ({@link createFeatureDisplayPredicate}) that both the layer style's Time Filter wrapper and the Selection Tools use, so what is selectable is exactly what is drawn.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link evaluateTemporalPredicate}
  * @see {@link isTimeFilterFieldEligible}
@@ -46,6 +46,19 @@ export interface TemporalPredicateContext {
   globalEnabled?: boolean;
   reckoning?: TimeReckoningKind;
 }
+
+/**
+ * @typedef {Object} TemporalFilterConfig
+ * @description A layer's temporal configuration as the map filters with it: the stored {@link LayerTemporalConfig} plus the inferred types of the fields it uses, when known, so a date field is always read as a date.
+ * @property {Readonly<Record<string, InferredFieldType>>} [fieldTypes] - Inferred type of each used field, by name.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-23
+ * @updated 2026-11-23
+ * @since 0.1.0-dev
+ */
+export type TemporalFilterConfig = LayerTemporalConfig & {
+  fieldTypes?: Readonly<Record<string, InferredFieldType>>;
+};
 
 /**
  * @constant {ReadonlySet<string>} DATE_FIELD_TYPES
@@ -125,18 +138,20 @@ export function temporalFieldsSuitReckoning(
 
 /**
  * @function parseTemporalValue
- * @description Normalizes diverse feature attribute temporal representations (epoch numbers, ISO strings, Date objects) into UTC epoch milliseconds. In Plain Number a numeric string is read as that number before any date parsing.
+ * @description Normalizes feature attribute time values (millisecond numbers, ISO strings, Date objects) into UTC Unix milliseconds. In Plain Number a numeric string from a field that is not date-typed is read as that number before any date parsing; a date-typed field is always parsed as a date.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {unknown} value - Raw feature attribute value.
  * @param {TimeReckoningKind} [reckoning] - Time Reckoning; dates are tried first unless it is `number`.
+ * @param {InferredFieldType} [fieldType] - Inferred type of the field the value came from; a date type always parses as a date, unknown types follow the Time Reckoning.
  * @returns {number | null} Normalized UTC epoch milliseconds, or null if unparseable, null, undefined, or empty.
  */
 export function parseTemporalValue(
   value: unknown,
-  reckoning?: TimeReckoningKind
+  reckoning?: TimeReckoningKind,
+  fieldType?: InferredFieldType
 ): number | null {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -157,7 +172,10 @@ export function parseTemporalValue(
       return null;
     }
 
-    if (reckoning === "number") {
+    if (
+      reckoning === "number"
+      && !(fieldType && DATE_FIELD_TYPES.has(fieldType))
+    ) {
       const plain = Number(trimmed);
       if (Number.isFinite(plain)) return plain;
     }
@@ -214,16 +232,16 @@ export function extractFeatureTemporalProperties(
  * Features with readable dates that fail the condition evaluate to false (hidden).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {unknown} featureOrProps - OpenLayers Feature or attribute key-value map.
- * @param {LayerTemporalConfig | undefined | null} config - Layer temporal configuration.
+ * @param {TemporalFilterConfig | undefined | null} config - Layer temporal configuration, with its fields' inferred types when known.
  * @param {TemporalPredicateContext} [context] - Optional override context for testing or custom viewport frames.
  * @returns {boolean} True if the feature satisfies the temporal predicate (visible), false otherwise (hidden).
  */
 export function evaluateTemporalPredicate(
   featureOrProps: unknown,
-  config: LayerTemporalConfig | undefined | null,
+  config: TemporalFilterConfig | undefined | null,
   context?: TemporalPredicateContext
 ): boolean {
   // If layer does not have dynamic temporal control enabled, render unconditionally
@@ -273,15 +291,23 @@ export function evaluateTemporalPredicate(
   const mode = config.mode as LayerTemporalMode | string;
   const startOp = config.startOp ?? ">=";
   const endOp = config.endOp ?? "<=";
-  const reckoning = context?.reckoning ?? timeReckoningSignal.value.reckoning;
+  const reckoning = context?.reckoning ?? timeReckoningSignal.value.kind;
 
   const fStart =
     config.startField ?
-      parseTemporalValue(props[config.startField], reckoning)
+      parseTemporalValue(
+        props[config.startField],
+        reckoning,
+        config.fieldTypes?.[config.startField]
+      )
     : null;
   const fEnd =
     config.endField ?
-      parseTemporalValue(props[config.endField], reckoning)
+      parseTemporalValue(
+        props[config.endField],
+        reckoning,
+        config.fieldTypes?.[config.endField]
+      )
     : null;
 
   // An unreadable date imposes no constraint: a feature lacking only one date is filtered by the other
@@ -335,13 +361,13 @@ export const ALWAYS_DISPLAYED: FeatureDisplayPredicate = () => true;
  * @description Builds a layer's "is this feature displayed now" predicate from its temporal configuration: {@link evaluateTemporalPredicate} against the live Time Filter signals (active flag, frame start/end), including the Undated Feature rule. The layer style's Time Filter wrapper hides exactly the features this predicate rejects, and every Selection Tool, Select All and the Vertex Markers skip them, so selection and display never disagree. Without Dynamic Temporal Control it is {@link ALWAYS_DISPLAYED}.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-20
- * @updated 2026-11-20
+ * @updated 2026-11-23
  * @since 0.1.0-dev
- * @param {LayerTemporalConfig | undefined | null} config - Layer temporal configuration.
+ * @param {TemporalFilterConfig | undefined | null} config - Layer temporal configuration, with its fields' inferred types when known.
  * @returns {FeatureDisplayPredicate} The layer's display predicate.
  */
 export function createFeatureDisplayPredicate(
-  config: LayerTemporalConfig | undefined | null
+  config: TemporalFilterConfig | undefined | null
 ): FeatureDisplayPredicate {
   if (!config || !config.enabled) return ALWAYS_DISPLAYED;
   return (featureOrProps) => evaluateTemporalPredicate(featureOrProps, config);

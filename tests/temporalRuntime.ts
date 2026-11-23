@@ -4,7 +4,7 @@
  * @description Runs a test file's `Temporal`-dependent suite where `Temporal` exists. The app runs in Electron, whose V8 ships `Temporal`; the Node used by `npm test` does not (and its `--harmony-temporal` flag crashes on calendar arithmetic). Under plain Node, {@link describeWithTemporal} registers one test that re-runs the same file inside the installed Electron binary in run-as-node mode (as `scripts/smoke-native-electron.cjs` does) and passes only when every test there passes; inside Electron it registers the suite directly.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see scripts/smoke-native-electron.cjs
  */
@@ -21,6 +21,19 @@ const REPOSITORY_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."
 );
+
+/**
+ * The parent `node --test` sets `NODE_TEST_CONTEXT` for its children; an inherited value makes the
+ * nested Electron run stream its results to the parent and exit 0 even when tests fail.
+ * @function electronTestEnv
+ * @description Environment for the nested Electron test run: Electron as plain Node, without the parent test runner's context.
+ * @returns {NodeJS.ProcessEnv} Environment variables.
+ */
+function electronTestEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, ELECTRON_RUN_AS_NODE: "1" };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+}
 
 /**
  * @function hasTemporal
@@ -57,7 +70,7 @@ export function describeWithTemporal(
       {
         cwd: REPOSITORY_ROOT,
         encoding: "utf-8",
-        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+        env: electronTestEnv(),
         timeout: 120000,
       }
     );

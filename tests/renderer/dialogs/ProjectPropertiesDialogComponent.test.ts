@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -415,7 +415,7 @@ describe("ProjectPropertiesDialog component (Ticket #271)", () => {
 
     updateProjectPropertiesDraft({
       timeReckoning: {
-        reckoning: "number",
+        kind: "number",
         zeroTime: 0,
         eraLabelAfter: "+",
         eraLabelBefore: "−",

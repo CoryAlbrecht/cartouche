@@ -4,7 +4,7 @@
  * @description Time Reckoning vocabulary and defaults shared by the main process and the renderer (ADR 0038): the list of Time Reckonings, the Gregorian Era, the default Custom Era, and {@link resolveTimeReckoning}, which turns the optional `<timeFilter>` attributes into a complete {@link TimeReckoning}. Needs no `Temporal`, so the project loader and saver can use it anywhere.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimeReckoning}
  * @see {@link resolveTimeReckoning}
@@ -66,11 +66,11 @@ export const GREGORIAN_ZERO_TIME = -62135596800000;
  * @description The default Time Reckoning: Gregorian with `CE` / `BCE` suffixes and Dates counting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
 export const GREGORIAN_TIME_RECKONING: Readonly<TimeReckoning> = Object.freeze({
-  reckoning: "gregory",
+  kind: "gregory",
   zeroTime: GREGORIAN_ZERO_TIME,
   eraLabelAfter: "CE",
   eraLabelBefore: "BCE",
@@ -79,14 +79,14 @@ export const GREGORIAN_TIME_RECKONING: Readonly<TimeReckoning> = Object.freeze({
 });
 
 /**
- * @constant {Omit<TimeReckoning, 'reckoning'>} DEFAULT_CUSTOM_ERA
+ * @constant {Omit<TimeReckoning, 'kind'>} DEFAULT_CUSTOM_ERA
  * @description Era used for any field a non-Gregorian Time Reckoning leaves unset: elapsed time from the Unix epoch, labelled `+` / `−` as prefixes, counted as Durations.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
-export const DEFAULT_CUSTOM_ERA: Readonly<Omit<TimeReckoning, "reckoning">> =
+export const DEFAULT_CUSTOM_ERA: Readonly<Omit<TimeReckoning, "kind">> =
   Object.freeze({
     zeroTime: 0,
     eraLabelAfter: "+",
@@ -139,7 +139,7 @@ export function isCalendarId(value: unknown): value is CalendarId {
  * @description Completes the optional Time Reckoning fields of a Time Filter configuration; a missing or unknown `reckoning` is Gregorian.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {ProjectTimeFilterConfig} [config] - Stored Time Filter configuration.
  * @returns {TimeReckoning} A complete Time Reckoning.
@@ -166,7 +166,7 @@ export function resolveTimeReckoning(
       config.eraCounting
     : DEFAULT_CUSTOM_ERA.eraCounting;
   return {
-    reckoning,
+    kind: reckoning,
     zeroTime,
     eraLabelAfter:
       typeof config?.eraLabelAfter === "string" ?
@@ -178,5 +178,36 @@ export function resolveTimeReckoning(
       : DEFAULT_CUSTOM_ERA.eraLabelBefore,
     eraLabelPosition: position,
     eraCounting: counting,
+  };
+}
+
+/**
+ * @function timeReckoningToConfig
+ * @description The `<timeFilter>` fields that store a Time Reckoning: its `kind` goes in `reckoning`, the Era fields keep their names.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-23
+ * @updated 2026-11-23
+ * @since 0.1.0-dev
+ * @param {TimeReckoning} r - Time Reckoning.
+ * @returns {ProjectTimeFilterConfig} Its stored fields.
+ */
+export function timeReckoningToConfig(
+  r: TimeReckoning
+): Pick<
+  ProjectTimeFilterConfig,
+  | "reckoning"
+  | "zeroTime"
+  | "eraLabelAfter"
+  | "eraLabelBefore"
+  | "eraLabelPosition"
+  | "eraCounting"
+> {
+  return {
+    reckoning: r.kind,
+    zeroTime: r.zeroTime,
+    eraLabelAfter: r.eraLabelAfter,
+    eraLabelBefore: r.eraLabelBefore,
+    eraLabelPosition: r.eraLabelPosition,
+    eraCounting: r.eraCounting,
   };
 }

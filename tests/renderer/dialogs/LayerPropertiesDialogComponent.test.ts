@@ -4,7 +4,7 @@
  * @description Component and reactive tests for LayerPropertiesDialog verifying modeless rendering, Information tab metadata, the Information and Fields tab fields tables embedded as TableWidgets, tab switching, and localization parity.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link LayerPropertiesDialog}
  * @see {@link LayerDetailedInfo}
@@ -817,7 +817,7 @@ describe("LayerPropertiesDialog Component & Reactive Architecture (Ticket #71)",
     projectTreeSignal.value = [layer];
     timeReckoningSignal.value = {
       ...timeReckoningSignal.value,
-      reckoning: "number",
+      kind: "number",
     };
 
     await openLayerPropertiesDialog("layer-plain-number");

@@ -4,18 +4,19 @@
  * @description Single-field number spinner for Time Filter values when the project's Time Reckoning is Plain Number (ADR 0038 §4): shows bare numbers, accepts decimals and a sign, holds typed text until a pause or a commit key (the shared pending-digits model of the Timestamp Spinner), steps by the Time Filter Step with the arrows, and keeps every value within ±`Number.MAX_SAFE_INTEGER`. It looks like the Timestamp Spinner and reuses its frame and button classes.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link PlainNumberSpinner}
+ * @see {@link SpinnerStepButtons}
  * @see {@link TimestampSpinner}
  * @see {@link usePendingDigits}
  */
 
 import React, { useState, type JSX } from "react";
-import Icon from "@renderer/components/common/Icon";
+import { SpinnerStepButtons } from "@renderer/components/common/SpinnerStepButtons";
 import { usePendingDigits } from "@renderer/hooks/usePendingDigits";
-import { formatPlainNumber } from "@shared/time/reckonedTime";
-import { mdiChevronUp, mdiChevronDown } from "@mdi/js";
+import { t } from "@renderer/state/i18nSignals";
+import { formatPlainNumber, roundStepNoise } from "@shared/time/reckonedTime";
 
 /**
  * @typedef {Object} PlainNumberSpinnerProps
@@ -24,7 +25,7 @@ import { mdiChevronUp, mdiChevronDown } from "@mdi/js";
  * @property {(value: number) => void} onChange - Receives a checked, limited number.
  * @property {number} [step=1] - Amount the arrows add or subtract.
  * @property {boolean} [disabled=false] - Disables the field and arrows.
- * @property {string} [ariaLabel='Number'] - Accessible name of the field.
+ * @property {string} [ariaLabel] - Accessible name of the field (default: the translated `spinner_number`, "Number").
  * @property {string} [className] - Extra classes for the frame.
  */
 export interface PlainNumberSpinnerProps {
@@ -69,7 +70,7 @@ export function limitPlainNumber(value: number): number {
  * @description Number field with Up / Down buttons for Plain Number Time Filter values. Typed characters (digits, `.`, `-`) show as typed and are checked and saved after a 1000 ms pause or on Enter, Tab, an arrow or blur; Escape throws them away.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {PlainNumberSpinnerProps} props - Component properties.
  * @returns {JSX.Element} The spinner.
@@ -80,7 +81,7 @@ export const PlainNumberSpinner: React.FC<PlainNumberSpinnerProps> = ({
   onChange,
   step = 1,
   disabled = false,
-  ariaLabel = "Number",
+  ariaLabel = t("spinner_number"),
   className = "",
 }): JSX.Element => {
   const [focused, setFocused] = useState(false);
@@ -108,9 +109,7 @@ export const PlainNumberSpinner: React.FC<PlainNumberSpinnerProps> = ({
     const typed = typing.take();
     const base = (typed && parseTyped(typed.digits)) ?? value;
     const safeStep = Number.isFinite(step) && step > 0 ? step : 1;
-    const raw = base + direction * safeStep;
-    const next = Number.isInteger(raw) ? raw : Number(raw.toPrecision(15));
-    onChange(limitPlainNumber(next));
+    onChange(limitPlainNumber(roundStepNoise(base + direction * safeStep)));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -189,34 +188,12 @@ export const PlainNumberSpinner: React.FC<PlainNumberSpinnerProps> = ({
           .filter(Boolean)
           .join(" ")}
       />
-      <div className='timestamp-spinner-buttons'>
-        <button
-          type='button'
-          tabIndex={-1}
-          aria-label='Increment value'
-          className='timestamp-spinner-btn timestamp-spinner-btn-up'
-          disabled={disabled}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => stepBy(1)}>
-          <Icon
-            path={mdiChevronUp}
-            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-          />
-        </button>
-        <button
-          type='button'
-          tabIndex={-1}
-          aria-label='Decrement value'
-          className='timestamp-spinner-btn timestamp-spinner-btn-down'
-          disabled={disabled}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => stepBy(-1)}>
-          <Icon
-            path={mdiChevronDown}
-            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
-          />
-        </button>
-      </div>
+      <SpinnerStepButtons
+        onStep={stepBy}
+        incrementLabel={t("spinner_increment_value")}
+        decrementLabel={t("spinner_decrement_value")}
+        disabled={disabled}
+      />
     </div>
   );
 };

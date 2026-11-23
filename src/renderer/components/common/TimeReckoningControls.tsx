@@ -4,7 +4,7 @@
  * @description Controlled Time Reckoning settings for the Project Properties Time Filter tab (ADR 0038): the Time Reckoning dropdown (Gregorian, Hebrew, Islamic (tabular civil), Persian, Ethiopian, Coptic, Buddhist, Custom Era, Plain Number) and the Era fields — Zero Time (a Gregorian Timestamp Spinner, BCE allowed), after and before Era Labels, label position and Era Counting. A preset Calendar fills the Era fields and shows them read-only; a Custom Era makes them editable; Plain Number hides them. Edits are reported through `onChange` so the dialog keeps them in its transactional draft (ADR 0024).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimeReckoningControls}
  * @see {@link timeReckoningFor}
@@ -59,7 +59,7 @@ export function reckoningLabelKey(kind: TimeReckoningKind): string {
  * @description Time Reckoning dropdown plus the Era fields (read-only for a preset Calendar, hidden for Plain Number).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {TimeReckoningControlsProps} props - Component properties.
  * @returns {JSX.Element} The controls.
@@ -69,7 +69,7 @@ export const TimeReckoningControls: React.FC<TimeReckoningControlsProps> = ({
   onChange,
   disabled = false,
 }): JSX.Element => {
-  const isPreset = isCalendarId(reckoning.reckoning);
+  const isPreset = isCalendarId(reckoning.kind);
   const eraDisabled = disabled || isPreset;
   const edit = (patch: Partial<TimeReckoning>) =>
     onChange({ ...reckoning, ...patch });
@@ -85,7 +85,7 @@ export const TimeReckoningControls: React.FC<TimeReckoningControlsProps> = ({
         <Select<TimeReckoningKind>
           id='time-reckoning-kind'
           className='time-reckoning-select'
-          value={reckoning.reckoning}
+          value={reckoning.kind}
           disabled={disabled}
           options={TIME_RECKONING_KINDS.map((kind) => ({
             value: kind,
@@ -95,7 +95,7 @@ export const TimeReckoningControls: React.FC<TimeReckoningControlsProps> = ({
         />
       </div>
 
-      {reckoning.reckoning !== "number" && (
+      {reckoning.kind !== "number" && (
         <div
           className={`time-reckoning-era-fields${isPreset ? " is-preset" : ""}`}>
           <div className='time-reckoning-row'>

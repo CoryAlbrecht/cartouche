@@ -4,7 +4,7 @@
  * @description Shared, controlled Time Filter settings controls used by TimeFilterWidget and the Project Properties Time Filter tab: the Enabled toggle button, the From / To range spinners (Timestamp Spinners in the project's Time Reckoning, or Plain Number spinners with the Unit disabled when it is Plain Number), the Step numeric input with discrete 1.00 arrows and the Unit dropdown. The controls receive their values as props and report edits through callbacks; they never touch the time filter signals and carry no playhead (current frame) control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link TimestampSpinner}
@@ -25,6 +25,7 @@ import { TimestampSpinner } from "./TimestampSpinner";
 import { PlainNumberSpinner } from "./PlainNumberSpinner";
 import { GREGORIAN_TIME_RECKONING } from "../../../shared/time/timeReckoning";
 import { Select } from "./Select";
+import { t } from "../../state/i18nSignals";
 import { MIN_TIME_FILTER_STEP } from "../../map/timeFilterMath";
 import type { TimeFilterUnit, TimeReckoning } from "../../../shared/types";
 
@@ -127,7 +128,7 @@ export interface TimeFilterRangeStepControlsProps {
  * @description Inline row of From / To spinners (Timestamp Spinners in the Time Reckoning, or Plain Number spinners with the Unit disabled), a separator, and the Step numeric input (with Step Up / Step Down 1.00 arrows and blur normalisation to {@link MIN_TIME_FILTER_STEP}) followed by the Unit dropdown. Renders as a fragment so the owner's flex row lays the groups out.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {TimeFilterRangeStepControlsProps} props - Component properties.
  * @returns {React.ReactElement} The range and step control groups.
@@ -146,7 +147,7 @@ export const TimeFilterRangeStepControls: React.FC<
   disabled = false,
   reckoning = GREGORIAN_TIME_RECKONING,
 }) => {
-  const isPlainNumber = reckoning.reckoning === "number";
+  const isPlainNumber = reckoning.kind === "number";
   const [stepText, setStepText] = useState<string>(() => String(step));
 
   // Synchronize local input text state with external value changes
@@ -213,84 +214,53 @@ export const TimeFilterRangeStepControls: React.FC<
     setStepText(String(next));
   }, [step, onStepChange]);
 
+  /**
+   * @function renderRangeField
+   * @description One labelled range field: a Plain Number spinner in Plain Number, a Timestamp Spinner otherwise.
+   * @param {string} label - Visible label text.
+   * @param {string} ariaLabel - Accessible name of the spinner.
+   * @param {number} value - Field value.
+   * @param {(value: number) => void} onChange - Receives the edited value.
+   * @returns {React.ReactElement} The field.
+   */
+  const renderRangeField = (
+    label: string,
+    ariaLabel: string,
+    value: number,
+    onChange: (value: number) => void
+  ) => (
+    <div className='time-filter-range-field'>
+      <span className='time-filter-field-label'>{label}:</span>
+      {isPlainNumber ?
+        <PlainNumberSpinner
+          value={value}
+          step={step}
+          ariaLabel={ariaLabel}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      : <TimestampSpinner
+          value={value}
+          reckoning={reckoning}
+          ariaLabel={ariaLabel}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      }
+    </div>
+  );
+
   return (
     <>
-      {/* Range: From */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          userSelect: "text",
-        }}>
-        <span
-          className='time-filter-field-label'
-          style={{ userSelect: "none" }}>
-          From:
-        </span>
-        {isPlainNumber ?
-          <PlainNumberSpinner
-            value={from}
-            step={step}
-            ariaLabel='From'
-            onChange={onFromChange}
-            disabled={disabled}
-          />
-        : <TimestampSpinner
-            value={from}
-            reckoning={reckoning}
-            onChange={onFromChange}
-            disabled={disabled}
-            style={{ userSelect: "text" }}
-          />
-        }
-      </div>
+      {renderRangeField("From", t("time_filter_from"), from, onFromChange)}
+      {renderRangeField("To", t("time_filter_to"), to, onToChange)}
 
-      {/* Range: To */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          userSelect: "text",
-        }}>
-        <span
-          className='time-filter-field-label'
-          style={{ userSelect: "none" }}>
-          To:
-        </span>
-        {isPlainNumber ?
-          <PlainNumberSpinner
-            value={to}
-            step={step}
-            ariaLabel='To'
-            onChange={onToChange}
-            disabled={disabled}
-          />
-        : <TimestampSpinner
-            value={to}
-            reckoning={reckoning}
-            onChange={onToChange}
-            disabled={disabled}
-            style={{ userSelect: "text" }}
-          />
-        }
-      </div>
-
-      <div
-        className='time-filter-divider'
-        style={{ width: "1px", height: "1.5rem", margin: "0 2px" }}
-      />
+      <div className='time-filter-divider' />
 
       {/* Step Input with discrete 1.00 arrow buttons */}
-      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+      <div className='time-filter-step-group'>
         <span className='time-filter-field-label'>Step:</span>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            position: "relative",
-          }}>
+        <div className='time-filter-step-field'>
           <input
             type='number'
             className='time-filter-step-input'
@@ -303,18 +273,7 @@ export const TimeFilterRangeStepControls: React.FC<
             onBlur={handleStepBlur}
             onKeyDown={handleStepKeyDown}
           />
-          <div
-            className='time-filter-step-arrows'
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)",
-              display: "flex",
-              flexDirection: "column",
-              boxSizing: "border-box",
-            }}>
+          <div className='time-filter-step-arrows'>
             <button
               type='button'
               tabIndex={-1}
@@ -382,7 +341,7 @@ export interface TimeFilterControlsProps extends TimeFilterRangeStepControlsProp
  * @description Stacked form of the shared controls for dialogs: an "Enabled:" row with the {@link TimeFilterEnabledToggle}, followed by the {@link TimeFilterRangeStepControls} row. No playhead control is included.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {TimeFilterControlsProps} props - Component properties.
  * @returns {React.ReactElement} The stacked controls.
@@ -393,28 +352,12 @@ export const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({
   ...rangeStepProps
 }) => {
   return (
-    <div
-      className='time-filter-controls'
-      style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      <div
-        className='time-filter-controls-enabled-row'
-        style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        <span
-          className='time-filter-field-label'
-          style={{ userSelect: "none" }}>
-          Enabled:
-        </span>
+    <div className='time-filter-controls'>
+      <div className='time-filter-controls-enabled-row'>
+        <span className='time-filter-field-label'>Enabled:</span>
         <TimeFilterEnabledToggle enabled={enabled} onChange={onEnabledChange} />
       </div>
-      <div
-        className='time-filter-controls-range-row'
-        style={{
-          display: "flex",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "12px",
-          boxSizing: "border-box",
-        }}>
+      <div className='time-filter-controls-range-row'>
         <TimeFilterRangeStepControls {...rangeStepProps} />
       </div>
     </div>

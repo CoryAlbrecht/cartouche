@@ -4,7 +4,7 @@
  * @description Modeless dialog window inspecting layer metadata, provider driver descriptors, attribute field schemas, and configuring source parameters.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link Dialog}
  * @see {@link ModalDialog}
@@ -637,7 +637,7 @@ function informationFieldColumns(): TableColumn<LayerFieldInfo>[] {
  * @description Modeless detached child window component rendering comprehensive GIS layer metadata, vector fields, and source configuration controls.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-23
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @returns {JSX.Element | null} The rendered modeless dialog or null if closed.
  */
@@ -1436,7 +1436,7 @@ export const LayerPropertiesDialog: React.FC = () => {
                   const isStartDisabled = temporalConfig.mode === "end";
                   const isEndDisabled = temporalConfig.mode === "start";
                   // Plain Number offers numeric and date fields; every other Time Reckoning date fields only (ADR 0038 §4).
-                  const reckoningKind = timeReckoningSignal.value.reckoning;
+                  const reckoningKind = timeReckoningSignal.value.kind;
                   const temporalFields = layerFields.filter(
                     (f) =>
                       isTimeFilterFieldEligible(f.inferredType, reckoningKind)

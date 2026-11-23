@@ -4,7 +4,7 @@
  * @description Preact reactive signals store for the Project Properties dialog: its open state, active tab, and the transactional draft (ADR 0024) that every tab edits (Project Title, Map Background Colour, Selection Colour, Project Home, Save Path Mode, measurement units and Scale Calculation, Time Filter Enabled / From / To / Step / Unit and Time Reckoning, Project CRS / No CRS and the Recently Used CRSs, Project Default Styles). Opening the dialog seeds the draft from the committed project state; Apply and OK commit the whole draft to the Project Store in one IPC round trip and set the Project Dirty State; Cancel and Close throw it away. The draft survives tab switches.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link projectPropertiesDraftSignal}
@@ -31,7 +31,10 @@ import {
   timeReckoningSignal,
   setTimeReckoning,
 } from "./timeFilterSignals";
-import { GREGORIAN_TIME_RECKONING } from "../../shared/time/timeReckoning";
+import {
+  GREGORIAN_TIME_RECKONING,
+  timeReckoningToConfig,
+} from "../../shared/time/timeReckoning";
 import { MIN_TIME_FILTER_STEP } from "../map/timeFilterMath";
 import { logging } from "../../shared/logging";
 import {
@@ -611,7 +614,7 @@ export function selectDraftCrs(
  * @description Commits the draft Time Filter settings (Enabled, From, To, Step, Unit, Time Reckoning) to the time filter signals that drive the TimeFilterWidget and the map, exactly as the widget's own controls do. The playhead (`current` frame) is never written; it only moves if the range setter has to clamp it inside the new range. The committed values are mirrored into the current project model so the next save persists them.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-13
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {ProjectPropertiesDraft} draft - Draft whose time filter members are committed.
  * @returns {void}
@@ -655,7 +658,7 @@ export function applyTimeFilterDraft(draft: ProjectPropertiesDraft): void {
         to: draft.timeFilterTo,
         step,
         unit: draft.timeFilterUnit,
-        ...reckoning,
+        ...timeReckoningToConfig(reckoning),
       };
     }
   });

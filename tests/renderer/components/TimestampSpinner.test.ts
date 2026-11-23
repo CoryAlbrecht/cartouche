@@ -4,7 +4,7 @@
  * @description Unit and component tests for TimestampSpinner verifying discrete segment rendering, boundary clamping, non-cascading arithmetic, keyboard navigation, UTC synchronization, and the Time Reckoning era part (#397).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link TimestampSpinner}
  * @see {@link parseUtcTimestamp}
@@ -1225,7 +1225,7 @@ describe("TimestampSpinner Time Reckoning and era part (Ticket #397)", () => {
 
   const GREGORY: TimeReckoning = { ...GREGORIAN_TIME_RECKONING };
   const RELATIVE: TimeReckoning = {
-    reckoning: "custom",
+    kind: "custom",
     zeroTime: Date.UTC(2000, 0, 1),
     eraLabelAfter: "+",
     eraLabelBefore: "−",

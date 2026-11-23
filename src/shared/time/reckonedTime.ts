@@ -4,7 +4,7 @@
  * @description Shows, edits and steps Time Filter instants in a Time Reckoning (ADR 0038). An instant is always Unix-epoch milliseconds; this module turns it into {@link ReckonedParts} (era side, year, month, day, hour, minute, second), back again, and into text. Gregorian and Custom Eras are counted in UTC proleptic Gregorian from the Era's Zero Time with `Date` arithmetic, which covers the same ±8.64e15 ms range as `Temporal.Instant`; the other preset Calendars go through `Temporal` (months as their position in the year, so a Hebrew leap year runs 1–13). Days start at midnight UTC everywhere.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link toReckonedParts}
  * @see {@link fromReckonedParts}
@@ -355,14 +355,55 @@ function calendarDateTime(
     .toPlainDateTime();
 }
 
+/** Memo of {@link beforeEraOffset} per Calendar. */
+const beforeEraOffsets = new Map<CalendarId, number | null>();
+
+/**
+ * Most Calendars count the years before their year 1 backwards (1 BH, 2 BH …) or have no earlier
+ * era at all. The Ethiopian Calendar instead counts Amete Alem years forwards up to AA 5500, the
+ * year before AM 1 (`Temporal` era `aa`, era year = extended year + 5500).
+ * @function beforeEraOffset
+ * @description The before-side era year of a Calendar's extended year 0, when that era counts forwards.
+ * @param {CalendarId} calendar - Calendar.
+ * @returns {number | null} 5500 for Ethiopian; null when the before side counts back from 1.
+ */
+function beforeEraOffset(calendar: CalendarId): number | null {
+  if (beforeEraOffsets.has(calendar)) {
+    return beforeEraOffsets.get(calendar) ?? null;
+  }
+  let offset: number | null = null;
+  try {
+    const first = getTemporal().PlainDate.from({
+      calendar,
+      year: 1,
+      month: 1,
+      day: 1,
+    });
+    const before = first.subtract({ days: 1 });
+    if (before.era && before.era !== first.era && (before.eraYear ?? 1) > 1) {
+      offset = (before.eraYear ?? 0) - before.year;
+    }
+  } catch {
+    offset = null;
+  }
+  beforeEraOffsets.set(calendar, offset);
+  return offset;
+}
+
 /**
  * @function calendarYear
- * @description The Calendar's own (extended) year number for parts: Dates counting with no year zero.
+ * @description The Calendar's own (extended) year number for parts: Dates counting with no year zero, or the forward-counting before era of {@link beforeEraOffset}.
  * @param {ReckonedParts} p - Parts.
+ * @param {CalendarId} calendar - Calendar.
  * @returns {number} Extended year (1 BCE-like year is 0).
  */
-function calendarYear(p: Pick<ReckonedParts, "side" | "year">): number {
-  return p.side === "after" ? p.year : 1 - p.year;
+function calendarYear(
+  p: Pick<ReckonedParts, "side" | "year">,
+  calendar: CalendarId
+): number {
+  if (p.side === "after") return p.year;
+  const offset = beforeEraOffset(calendar);
+  return offset === null ? 1 - p.year : p.year - offset;
 }
 
 /**
@@ -378,7 +419,7 @@ function calendarMonthFacts(
 ): { monthsInYear: number; daysInMonth: number } {
   try {
     const T = getTemporal();
-    const year = calendarYear(p);
+    const year = calendarYear(p, calendar);
     const first = T.PlainDate.from({ calendar, year, month: 1, day: 1 });
     const month = Math.max(1, Math.min(first.monthsInYear, p.month));
     const inMonth = T.PlainDate.from({ calendar, year, month, day: 1 });
@@ -399,8 +440,8 @@ function calendarMonthFacts(
  */
 function usesTemporalCalendar(
   r: TimeReckoning
-): r is TimeReckoning & { reckoning: CalendarId } {
-  return isCalendarId(r.reckoning) && r.reckoning !== "gregory";
+): r is TimeReckoning & { kind: CalendarId } {
+  return isCalendarId(r.kind) && r.kind !== "gregory";
 }
 
 /**
@@ -408,7 +449,7 @@ function usesTemporalCalendar(
  * @description Shows an instant as era side, year, month, day and time in a Time Reckoning.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {number} ms - Instant in Unix-epoch milliseconds.
  * @param {TimeReckoning} r - Time Reckoning.
@@ -417,10 +458,14 @@ function usesTemporalCalendar(
 export function toReckonedParts(ms: number, r: TimeReckoning): ReckonedParts {
   const t = Math.floor(clampInstant(Number.isFinite(ms) ? ms : 0, "after"));
   if (usesTemporalCalendar(r)) {
-    const d = calendarDateTime(t, r.reckoning);
+    const d = calendarDateTime(t, r.kind);
+    const offset = beforeEraOffset(r.kind);
     return {
       side: d.year >= 1 ? "after" : "before",
-      year: d.year >= 1 ? d.year : 1 - d.year,
+      year:
+        d.year >= 1 ? d.year
+        : offset === null ? 1 - d.year
+        : d.year + offset,
       month: d.month,
       day: d.day,
       hour: d.hour,
@@ -433,10 +478,10 @@ export function toReckonedParts(ms: number, r: TimeReckoning): ReckonedParts {
 
 /**
  * @function reckonedSegmentRange
- * @description Limits of one segment for the given parts: years from 1 (Dates) or 0 (Durations); months 1–12 / 0–11 or the Calendar's months in that year; days up to the length of that month.
+ * @description Limits of one segment for the given parts: years from 1 (Dates) or 0 (Durations), Ethiopian Amete Alem years up to AA 5500; months 1–12 / 0–11 or the Calendar's months in that year; days up to the length of that month.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {ReckonedParts} p - Current parts.
  * @param {ReckonedSegment} segment - Segment.
@@ -451,8 +496,13 @@ export function reckonedSegmentRange(
   const calendar = usesTemporalCalendar(r);
   const first = calendar || r.eraCounting === "dates" ? 1 : 0;
   switch (segment) {
-    case "year":
-      return { min: first, max: MAX_RECKONED_YEAR };
+    case "year": {
+      const offset =
+        calendar && p.side === "before" ? beforeEraOffset(r.kind) : null;
+      return offset === null ?
+          { min: first, max: MAX_RECKONED_YEAR }
+        : { min: offset - MAX_RECKONED_YEAR, max: offset };
+    }
     case "hour":
       return { min: 0, max: 23 };
     case "minute":
@@ -461,14 +511,11 @@ export function reckonedSegmentRange(
     case "month":
       return {
         min: first,
-        max:
-          calendar ?
-            calendarMonthFacts(p, r.reckoning).monthsInYear
-          : first + 11,
+        max: calendar ? calendarMonthFacts(p, r.kind).monthsInYear : first + 11,
       };
     case "day": {
       if (calendar) {
-        return { min: 1, max: calendarMonthFacts(p, r.reckoning).daysInMonth };
+        return { min: 1, max: calendarMonthFacts(p, r.kind).daysInMonth };
       }
       const { start, next } = eraMonthBounds(p, r);
       const length = Math.round(Math.abs(next - start) / DAY_MS);
@@ -505,7 +552,7 @@ function limitParts(p: ReckonedParts, r: TimeReckoning): ReckonedParts {
  * @description Builds the instant shown by parts, limiting each segment without carrying into its neighbours and clamping to the `Temporal` range.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {ReckonedParts} parts - Parts.
  * @param {TimeReckoning} r - Time Reckoning.
@@ -520,8 +567,8 @@ export function fromReckonedParts(
     try {
       const d = getTemporal().PlainDateTime.from(
         {
-          calendar: r.reckoning,
-          year: calendarYear(p),
+          calendar: r.kind,
+          year: calendarYear(p, r.kind),
           month: p.month,
           day: p.day,
           hour: p.hour,
@@ -620,11 +667,25 @@ export function eraLabelFor(side: EraSide, r: TimeReckoning): string {
 }
 
 /**
+ * @function isSymbolEraLabel
+ * @description Whether an Era Label is a symbol (no letters or digits, e.g. `+` or `−`) rather than a word.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-23
+ * @updated 2026-11-23
+ * @since 0.1.0-dev
+ * @param {string} label - Era Label.
+ * @returns {boolean} True for a symbol label.
+ */
+export function isSymbolEraLabel(label: string): boolean {
+  return /^[^\p{L}\p{N}]+$/u.test(label);
+}
+
+/**
  * @function attachEraLabel
- * @description Places an Era Label before or after a value: a symbol label (no letters or digits, e.g. `+`) touches the value, a word label is a space away.
+ * @description Places an Era Label on a value: a symbol label (no letters or digits, e.g. `+`) always goes right before the value, whatever the Era Label position; a word label goes before or after it as set, a space away.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {string} value - Formatted value.
  * @param {string} label - Era Label.
@@ -637,10 +698,10 @@ export function attachEraLabel(
   r: TimeReckoning
 ): string {
   if (!label) return value;
-  const gap = /^[^\p{L}\p{N}]+$/u.test(label) ? "" : " ";
+  if (isSymbolEraLabel(label)) return `${label}${value}`;
   return r.eraLabelPosition === "prefix" ?
-      `${label}${gap}${value}`
-    : `${value}${gap}${label}`;
+      `${label} ${value}`
+    : `${value} ${label}`;
 }
 
 /**
@@ -671,20 +732,32 @@ export function formatReckonedParts(
 }
 
 /**
+ * @function roundStepNoise
+ * @description Removes floating-point stepping noise (0.1 + 0.2 = 0.30000000000000004): integers are returned as they are, other numbers rounded to 15 significant digits.
+ * @author Cory Albrecht <cory@albrecht.name>
+ * @date 2026-11-23
+ * @updated 2026-11-23
+ * @since 0.1.0-dev
+ * @param {number} value - Number.
+ * @returns {number} The number without stepping noise.
+ */
+export function roundStepNoise(value: number): number {
+  return Number.isInteger(value) ? value : Number(value.toPrecision(15));
+}
+
+/**
  * @function formatPlainNumber
- * @description Text of a Plain Number: integers exactly, other numbers rounded to 15 significant digits so stepping noise (0.30000000000000004) does not show.
+ * @description Text of a Plain Number: integers exactly, other numbers without stepping noise ({@link roundStepNoise}).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {number} value - Number.
  * @returns {string} Text.
  */
 export function formatPlainNumber(value: number): string {
   if (!Number.isFinite(value)) return "0";
-  return Number.isInteger(value) ?
-      String(value)
-    : String(Number(value.toPrecision(15)));
+  return String(roundStepNoise(value));
 }
 
 /**
@@ -692,14 +765,14 @@ export function formatPlainNumber(value: number): string {
  * @description Text of an instant in a Time Reckoning (Current Frame, slider labels); Plain Number shows the bare number.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {number} ms - Instant (or Plain Number value).
  * @param {TimeReckoning} r - Time Reckoning.
  * @returns {string} Text.
  */
 export function formatInstant(ms: number, r: TimeReckoning): string {
-  if (r.reckoning === "number") return formatPlainNumber(ms);
+  if (r.kind === "number") return formatPlainNumber(ms);
   return formatReckonedParts(toReckonedParts(ms, r), r);
 }
 
@@ -760,14 +833,15 @@ function eraNameAt(calendar: CalendarId, ms: number): string | undefined {
 }
 
 /**
- * The before label is the `Intl` era of the day before year 1 only when that era mirrors the
- * calendar's own (counts back from 1, as BCE does); otherwise the calendar has one era and the
- * before side shows `−`. Gregorian is fixed to `CE` / `BCE`.
+ * The before label is the era of the day before year 1 when the Calendar has one there: its
+ * `Intl` short name, or the upper-cased `Temporal` era code where `Intl` repeats the after era
+ * (Islamic `bh` → `BH`). Ethiopian years before AM 1 are real Amete Alem (`AA`) years. A Calendar
+ * with a single era shows `−`. Gregorian is fixed to `CE` / `BCE`.
  * @function presetCalendarEra
  * @description The Time Reckoning of a preset Calendar: Era Labels from `Intl` short era names, Zero Time = the Gregorian instant of the Calendar's 1-1-1, suffix labels, Dates counting.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {CalendarId} calendar - Calendar.
  * @returns {TimeReckoning} Its Time Reckoning.
@@ -779,13 +853,19 @@ export function presetCalendarEra(calendar: CalendarId): TimeReckoning {
   const zeroTime = first.toZonedDateTime("UTC").epochMilliseconds;
   const after = eraNameAt(calendar, zeroTime) ?? "+";
   const dayBefore = first.subtract({ days: 1 });
-  const beforeName = eraNameAt(calendar, zeroTime - DAY_MS);
-  const mirrors = dayBefore.eraYear === 1 && beforeName && beforeName !== after;
+  let before = "−";
+  if (dayBefore.era && dayBefore.era !== first.era) {
+    const beforeName = eraNameAt(calendar, zeroTime - DAY_MS);
+    before =
+      beforeName && beforeName !== after ?
+        beforeName
+      : dayBefore.era.toUpperCase();
+  }
   return {
-    reckoning: calendar,
+    kind: calendar,
     zeroTime,
     eraLabelAfter: after,
-    eraLabelBefore: mirrors ? beforeName : "−",
+    eraLabelBefore: before,
     eraLabelPosition: "suffix",
     eraCounting: "dates",
   };
@@ -796,7 +876,7 @@ export function presetCalendarEra(calendar: CalendarId): TimeReckoning {
  * @description The Time Reckoning after choosing `kind` in the dropdown: a preset Calendar fills its own Era; Custom Era and Plain Number keep the Era fields shown before. Stored instants are never touched.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {TimeReckoningKind} kind - Chosen Time Reckoning.
  * @param {TimeReckoning} current - Time Reckoning before the choice.
@@ -807,7 +887,7 @@ export function timeReckoningFor(
   current: TimeReckoning
 ): TimeReckoning {
   if (isCalendarId(kind)) return presetCalendarEra(kind);
-  return { ...current, reckoning: kind };
+  return { ...current, kind };
 }
 
 /**
@@ -815,7 +895,7 @@ export function timeReckoningFor(
  * @description The Time Reckoning a loaded `<timeFilter>` describes: missing `reckoning` is Gregorian; a preset Calendar takes its own Era (falling back to the stored fields where `Temporal` is unavailable); a Custom Era or Plain Number keeps its stored Era fields.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {ProjectTimeFilterConfig} [config] - Stored Time Filter configuration.
  * @returns {TimeReckoning} The Time Reckoning.
@@ -824,9 +904,9 @@ export function timeReckoningFromConfig(
   config?: ProjectTimeFilterConfig | null
 ): TimeReckoning {
   const resolved = resolveTimeReckoning(config);
-  if (!isCalendarId(resolved.reckoning)) return resolved;
+  if (!isCalendarId(resolved.kind)) return resolved;
   try {
-    return presetCalendarEra(resolved.reckoning);
+    return presetCalendarEra(resolved.kind);
   } catch {
     return resolved;
   }

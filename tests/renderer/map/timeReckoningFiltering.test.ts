@@ -4,7 +4,7 @@
  * @description Tests how the Time Reckoning (#397) changes Time Filter stepping and filtering: Plain Number steps by bare Step with any Unit, Days and smaller stay fixed lengths in every Calendar, a Custom Era steps Months / Years in Gregorian, preset Calendars step with their own arithmetic (inside Electron), Plain Number reads numeric strings as numbers, layer field eligibility per Time Reckoning, and Undated Features for mismatched fields.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link stepTemporalTimestamp}
  * @see {@link isTimeFilterFieldEligible}
@@ -24,6 +24,7 @@ import {
 } from "../../../src/renderer/map/timeFilterMath";
 import {
   parseTemporalValue,
+  evaluateTemporalPredicate,
   isTimeFilterFieldEligible,
   temporalFieldsSuitReckoning,
 } from "../../../src/renderer/map/temporalPredicate";
@@ -49,15 +50,9 @@ import type {
 } from "../../../src/shared/types";
 
 const DAY = 86400000;
-const NUMBER: TimeReckoning = {
-  ...GREGORIAN_TIME_RECKONING,
-  reckoning: "number",
-};
-const CUSTOM: TimeReckoning = { reckoning: "custom", ...DEFAULT_CUSTOM_ERA };
-const HEBREW_KIND: TimeReckoning = {
-  reckoning: "hebrew",
-  ...DEFAULT_CUSTOM_ERA,
-};
+const NUMBER: TimeReckoning = { ...GREGORIAN_TIME_RECKONING, kind: "number" };
+const CUSTOM: TimeReckoning = { kind: "custom", ...DEFAULT_CUSTOM_ERA };
+const HEBREW_KIND: TimeReckoning = { kind: "hebrew", ...DEFAULT_CUSTOM_ERA };
 
 /**
  * @function field
@@ -84,11 +79,6 @@ describe("Stepping in a Time Reckoning", () => {
     assert.equal(computeTemporalStepAttribute(0.25, "Months", NUMBER), 0.25);
     assert.equal(snapToTemporalStep(10.3, 0, 100, 0.5, "Days", NUMBER), 10.5);
     assert.equal(computeFrameEnd(10, 5, "Years", 12, NUMBER), 12);
-  });
-
-  it("reads the project Time Reckoning when none is passed", () => {
-    timeReckoningSignal.value = NUMBER;
-    assert.equal(stepTemporalTimestamp(10, 0.5, "Days"), 10.5);
   });
 
   it("Days and smaller stay fixed lengths in every Calendar", () => {
@@ -157,6 +147,62 @@ describe("Plain Number reads fields as numbers", () => {
     );
   });
 
+  it("date-typed fields are always read as dates, numeric-typed fields as numbers", () => {
+    assert.equal(
+      parseTemporalValue("1812", "number", "date"),
+      Date.parse("1812"),
+      "a date field holding a bare year is a date"
+    );
+    assert.equal(
+      parseTemporalValue("1812", "number", "datetime"),
+      Date.parse("1812")
+    );
+    assert.equal(parseTemporalValue("1812", "number", "integer"), 1812);
+    assert.equal(parseTemporalValue("2.5", "number", "real"), 2.5);
+  });
+
+  it("the Time Filter reads a date field as a date in Plain Number", () => {
+    timeReckoningSignal.value = NUMBER;
+    const layer = fromPartial<LayerDescriptor>({
+      id: "l1",
+      name: "Events",
+      visible: true,
+      temporal: { enabled: true, mode: "start", startField: "when" },
+      fields: [field("when", "date")],
+    });
+    const range = calculateActiveTemporalRange(
+      [layer],
+      [
+        fromPartial<GisFeature>({
+          id: "a",
+          layerId: "l1",
+          properties: { when: "1812" },
+        }),
+      ],
+      NUMBER
+    );
+    assert.deepEqual(range, {
+      from: Date.parse("1812"),
+      to: Date.parse("1812"),
+    });
+    const config = {
+      enabled: true,
+      mode: "start" as const,
+      startField: "when",
+      startOp: ">=" as const,
+      fieldTypes: { when: "date" as const },
+    };
+    const at = (frame: number) =>
+      evaluateTemporalPredicate({ when: "1812" }, config, {
+        globalEnabled: true,
+        frameStartUtc: frame,
+        frameEndUtc: frame,
+        reckoning: "number",
+      });
+    assert.equal(at(Date.parse("1812") - 1), false, "before 1812 is hidden");
+    assert.equal(at(1000), true, "1812 is not read as the number 1812");
+  });
+
   it("Auto-Range reads numeric fields as numbers in Plain Number", () => {
     timeReckoningSignal.value = NUMBER;
     const layer = fromPartial<LayerDescriptor>({
@@ -179,7 +225,8 @@ describe("Plain Number reads fields as numbers", () => {
           layerId: "l1",
           properties: { n: "1812" },
         }),
-      ]
+      ],
+      timeReckoningSignal.value
     );
     assert.deepEqual(range, { from: 5, to: 1812 });
   });
@@ -232,7 +279,8 @@ describe("Layer field eligibility", () => {
           layerId: "l1",
           properties: { n: 5 },
         }),
-      ]
+      ],
+      timeReckoningSignal.value
     );
     assert.equal(range, null);
   });

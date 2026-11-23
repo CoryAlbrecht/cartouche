@@ -4,7 +4,7 @@
  * @description Domain interfaces and type definitions for in-memory Cartouche project models, metadata, coordinate reference systems, viewports, layer/group hierarchies, styles, and feature query options including multi-column Sort Keys.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-10-03
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
 
@@ -345,7 +345,7 @@ export type EraCounting = "dates" | "durations";
 /**
  * A fully resolved Time Reckoning with its Era (ADR 0038). Every field is always present.
  * @typedef {Object} TimeReckoning
- * @property {TimeReckoningKind} reckoning - Preset Calendar, Custom Era or Plain Number.
+ * @property {TimeReckoningKind} kind - Preset Calendar, Custom Era or Plain Number (stored as the `reckoning` attribute).
  * @property {number} zeroTime - Zero Time of the Era in Unix-epoch milliseconds.
  * @property {string} eraLabelAfter - Era Label for instants at or after the Zero Time.
  * @property {string} eraLabelBefore - Era Label for instants before the Zero Time.
@@ -353,11 +353,11 @@ export type EraCounting = "dates" | "durations";
  * @property {EraCounting} eraCounting - Dates (from 1, no year zero) or Durations (from 0).
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-22
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  */
 export interface TimeReckoning {
-  reckoning: TimeReckoningKind;
+  kind: TimeReckoningKind;
   zeroTime: number;
   eraLabelAfter: string;
   eraLabelBefore: string;

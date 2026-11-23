@@ -4,7 +4,7 @@
  * @description Dockable Workbench widget subclassing BasicWidget providing temporal viewport transport controls, continuous scrubbing slider, embedded range spinners, and calendar-aware micro-decimal stepping. From, To, the slider value text and the Current Frame are shown in the project's Time Reckoning (ADR 0038); in Plain Number they are bare numbers.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @see {@link BasicWidget}
  * @see {@link TimeFilterControls}
@@ -121,7 +121,7 @@ export interface TimeFilterWidgetProps extends Omit<
  * @description Dockable panel providing global temporal filtering controls, continuous scrubbing, and range settings. The Enabled toggle and the From / To / Step / Unit controls come from the shared TimeFilterControls module, bound to the time filter signals.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-10
- * @updated 2026-11-22
+ * @updated 2026-11-23
  * @since 0.1.0-dev
  * @param {TimeFilterWidgetProps} props - Widget props.
  * @returns {React.ReactElement} Time filter widget element.
@@ -162,7 +162,13 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
       setTimeFilterRange(range.from, range.to);
       const s = timeFilterStepSignal.value;
       const u = timeFilterUnitSignal.value;
-      const end = computeFrameEnd(range.from, s, u, range.to);
+      const end = computeFrameEnd(
+        range.from,
+        s,
+        u,
+        range.to,
+        timeReckoningSignal.value
+      );
       setTimeFilterFrame(range.from, end);
     }
   }, []);
@@ -173,7 +179,13 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const s = timeFilterStepSignal.value;
     const u = timeFilterUnitSignal.value;
     const maxRange = timeFilterRangeEndSignal.value;
-    const end = computeFrameEnd(start, s, u, maxRange);
+    const end = computeFrameEnd(
+      start,
+      s,
+      u,
+      maxRange,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(start, end);
     isProjectDirtySignal.value = true;
   }, []);
@@ -183,11 +195,17 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const cur = timeFilterFrameStartSignal.value;
     const s = timeFilterStepSignal.value;
     const u = timeFilterUnitSignal.value;
-    const target = stepTemporalTimestamp(cur, -s, u);
+    const target = stepTemporalTimestamp(cur, -s, u, timeReckoningSignal.value);
     const minRange = timeFilterRangeStartSignal.value;
     const maxRange = timeFilterRangeEndSignal.value;
     const clampedStart = Math.max(minRange, target);
-    const clampedEnd = computeFrameEnd(clampedStart, s, u, maxRange);
+    const clampedEnd = computeFrameEnd(
+      clampedStart,
+      s,
+      u,
+      maxRange,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(clampedStart, clampedEnd);
     isProjectDirtySignal.value = true;
   }, []);
@@ -197,11 +215,17 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const cur = timeFilterFrameStartSignal.value;
     const s = timeFilterStepSignal.value;
     const u = timeFilterUnitSignal.value;
-    const target = stepTemporalTimestamp(cur, s, u);
+    const target = stepTemporalTimestamp(cur, s, u, timeReckoningSignal.value);
     const minRange = timeFilterRangeStartSignal.value;
     const maxRange = timeFilterRangeEndSignal.value;
     const clampedStart = Math.max(minRange, Math.min(maxRange, target));
-    const clampedEnd = computeFrameEnd(clampedStart, s, u, maxRange);
+    const clampedEnd = computeFrameEnd(
+      clampedStart,
+      s,
+      u,
+      maxRange,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(clampedStart, clampedEnd);
     isProjectDirtySignal.value = true;
   }, []);
@@ -212,8 +236,17 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     const maxRange = timeFilterRangeEndSignal.value;
     const s = timeFilterStepSignal.value;
     const u = timeFilterUnitSignal.value;
-    const start = Math.max(minRange, stepTemporalTimestamp(maxRange, -s, u));
-    const end = computeFrameEnd(start, s, u, maxRange);
+    const start = Math.max(
+      minRange,
+      stepTemporalTimestamp(maxRange, -s, u, timeReckoningSignal.value)
+    );
+    const end = computeFrameEnd(
+      start,
+      s,
+      u,
+      maxRange,
+      timeReckoningSignal.value
+    );
     setTimeFilterFrame(start, end);
     isProjectDirtySignal.value = true;
   }, []);
@@ -226,14 +259,27 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
       const u = timeFilterUnitSignal.value;
       const minRange = timeFilterRangeStartSignal.value;
       const maxRange = timeFilterRangeEndSignal.value;
-      const val = snapToTemporalStep(rawVal, minRange, maxRange, s, u);
+      const val = snapToTemporalStep(
+        rawVal,
+        minRange,
+        maxRange,
+        s,
+        u,
+        timeReckoningSignal.value
+      );
       setScrubbingValue(val);
       isProjectDirtySignal.value = true;
       if (debounceTimerRef.current !== null) {
         clearTimeout(debounceTimerRef.current);
       }
       debounceTimerRef.current = setTimeout(() => {
-        const nextEnd = computeFrameEnd(val, s, u, maxRange);
+        const nextEnd = computeFrameEnd(
+          val,
+          s,
+          u,
+          maxRange,
+          timeReckoningSignal.value
+        );
         setTimeFilterFrame(val, nextEnd);
         setScrubbingValue(null);
         debounceTimerRef.current = null;
@@ -267,14 +313,24 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
     scrubbingValue !== null ? scrubbingValue : frameStart;
   const displayedFrameEnd =
     scrubbingValue !== null ?
-      computeFrameEnd(scrubbingValue, step, unit, rangeEnd)
+      computeFrameEnd(
+        scrubbingValue,
+        step,
+        unit,
+        rangeEnd,
+        timeReckoningSignal.value
+      )
     : frameEnd;
 
   const currentFrameLabel = `${formatInstant(displayedFrameStart, reckoning)} | ${formatInstant(displayedFrameEnd, reckoning)}`;
 
   const sliderMin = rangeStart;
   const sliderMax = Math.max(rangeStart, rangeEnd);
-  const sliderStep = computeTemporalStepAttribute(step, unit);
+  const sliderStep = computeTemporalStepAttribute(
+    step,
+    unit,
+    timeReckoningSignal.value
+  );
   const sliderDisabled = rangeStart >= rangeEnd;
   const isAtStart = rangeStart >= rangeEnd || displayedFrameStart <= rangeStart;
   const isAtEnd = rangeStart >= rangeEnd || displayedFrameEnd >= rangeEnd;
@@ -300,12 +356,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
         {/* Top Control Bar: Activation, Auto-Range, VCR Transport, Current Frame */}
         <div
           className='time-filter-top-bar'
-          style={{
-            display: "flex",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "8px",
-          }}>
+          style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
           {/* Activation & Auto-Range */}
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <TimeFilterEnabledToggle
@@ -325,10 +376,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             </button>
           </div>
 
-          <div
-            className='time-filter-divider'
-            style={{ width: "1px", height: "1.5rem", margin: "0 2px" }}
-          />
+          <div className='time-filter-divider' />
 
           {/* VCR Transport Buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
@@ -382,10 +430,7 @@ export const TimeFilterWidget: React.FC<TimeFilterWidgetProps> = (props) => {
             </button>
           </div>
 
-          <div
-            className='time-filter-divider'
-            style={{ width: "1px", height: "1.5rem", margin: "0 2px" }}
-          />
+          <div className='time-filter-divider' />
 
           {/* Current Frame Display */}
           <div
