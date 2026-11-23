@@ -4,7 +4,7 @@
  * @description Tests for the shared TimeFilterControls module: controlled rendering of Enabled / From / To / Step / Unit from props, callbacks for every edit, step floor enforcement, and the absence of any playhead control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-17
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link TimeFilterControls}
  * @see {@link TimeFilterRangeStepControls}
@@ -66,7 +66,7 @@ describe("TimeFilterControls (Ticket #270)", () => {
     );
     assert.ok(html.includes("Enabled:"));
     assert.ok(
-      html.includes('class="toolbar-btn active"'),
+      html.includes('class="toolbar-btn time-filter-icon-btn active"'),
       "enabled toggle reflects the prop"
     );
     assert.ok(

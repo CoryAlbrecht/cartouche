@@ -4,7 +4,7 @@
  * @description Shared, controlled Time Filter settings controls used by TimeFilterWidget and the Project Properties Time Filter tab: the Enabled toggle button, the From / To range spinners, the Step numeric input with discrete 1.00 arrows and the Unit dropdown. The controls receive their values as props and report edits through callbacks; they never touch the time filter signals and carry no playhead (current frame) control.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link TimeFilterWidget}
  * @see {@link TimestampSpinner}
@@ -64,7 +64,7 @@ export interface TimeFilterEnabledToggleProps {
  * @description Toolbar-style toggle button (clock icon) switching dynamic temporal filtering on and off.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-12
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {TimeFilterEnabledToggleProps} props - Component properties.
  * @returns {React.ReactElement} The toggle button.
@@ -75,18 +75,15 @@ export const TimeFilterEnabledToggle: React.FC<
   return (
     <button
       type='button'
-      className={`toolbar-btn ${enabled ? "active" : ""}`}
+      className={`toolbar-btn time-filter-icon-btn ${enabled ? "active" : ""}`}
       title='Toggle Dynamic Temporal Control'
       aria-label='Toggle Dynamic Temporal Control'
       aria-pressed={enabled}
-      onClick={() => onChange(!enabled)}
-      style={{
-        width: "26px",
-        height: "24px",
-        minWidth: "26px",
-        minHeight: "24px",
-      }}>
-      <Icon path={mdiClockTimeFourOutline} size='16px' />
+      onClick={() => onChange(!enabled)}>
+      <Icon
+        path={mdiClockTimeFourOutline}
+        size='calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)'
+      />
     </button>
   );
 };
@@ -125,7 +122,7 @@ export interface TimeFilterRangeStepControlsProps {
  * @description Inline row of From / To timestamp spinners, a separator, and the Step numeric input (with Step Up / Step Down 1.00 arrows and blur normalisation to {@link MIN_TIME_FILTER_STEP}) followed by the Unit dropdown. Renders as a fragment so the owner's flex row lays the groups out.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {TimeFilterRangeStepControlsProps} props - Component properties.
  * @returns {React.ReactElement} The range and step control groups.
@@ -221,7 +218,7 @@ export const TimeFilterRangeStepControls: React.FC<
         }}>
         <span
           className='time-filter-field-label'
-          style={{ fontWeight: 500, fontSize: "0.75rem", userSelect: "none" }}>
+          style={{ userSelect: "none" }}>
           From:
         </span>
         <TimestampSpinner
@@ -242,7 +239,7 @@ export const TimeFilterRangeStepControls: React.FC<
         }}>
         <span
           className='time-filter-field-label'
-          style={{ fontWeight: 500, fontSize: "0.75rem", userSelect: "none" }}>
+          style={{ userSelect: "none" }}>
           To:
         </span>
         <TimestampSpinner
@@ -255,16 +252,12 @@ export const TimeFilterRangeStepControls: React.FC<
 
       <div
         className='time-filter-divider'
-        style={{ width: "1px", height: "18px", margin: "0 2px" }}
+        style={{ width: "1px", height: "1.5rem", margin: "0 2px" }}
       />
 
       {/* Step Input with discrete 1.00 arrow buttons */}
       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-        <span
-          className='time-filter-field-label'
-          style={{ fontWeight: 500, fontSize: "0.75rem" }}>
-          Step:
-        </span>
+        <span className='time-filter-field-label'>Step:</span>
         <div
           style={{
             display: "flex",
@@ -290,7 +283,7 @@ export const TimeFilterRangeStepControls: React.FC<
               right: 0,
               top: 0,
               bottom: 0,
-              width: "16px",
+              width: "calc(var(--cartouche-ui-icon-size, 24px) * 0.6667)",
               display: "flex",
               flexDirection: "column",
               boxSizing: "border-box",
@@ -303,7 +296,10 @@ export const TimeFilterRangeStepControls: React.FC<
               disabled={disabled}
               className='time-filter-step-arrow time-filter-step-arrow-up'
               onClick={handleStepUp}>
-              <Icon path={mdiChevronUp} size='12px' />
+              <Icon
+                path={mdiChevronUp}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+              />
             </button>
             <button
               type='button'
@@ -313,7 +309,10 @@ export const TimeFilterRangeStepControls: React.FC<
               disabled={disabled}
               className='time-filter-step-arrow time-filter-step-arrow-down'
               onClick={handleStepDown}>
-              <Icon path={mdiChevronDown} size='12px' />
+              <Icon
+                path={mdiChevronDown}
+                size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+              />
             </button>
           </div>
         </div>
@@ -356,7 +355,7 @@ export interface TimeFilterControlsProps extends TimeFilterRangeStepControlsProp
  * @description Stacked form of the shared controls for dialogs: an "Enabled:" row with the {@link TimeFilterEnabledToggle}, followed by the {@link TimeFilterRangeStepControls} row. No playhead control is included.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @param {TimeFilterControlsProps} props - Component properties.
  * @returns {React.ReactElement} The stacked controls.
@@ -369,18 +368,13 @@ export const TimeFilterControls: React.FC<TimeFilterControlsProps> = ({
   return (
     <div
       className='time-filter-controls'
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-        fontSize: "0.8333rem",
-      }}>
+      style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       <div
         className='time-filter-controls-enabled-row'
         style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <span
           className='time-filter-field-label'
-          style={{ fontWeight: 500, fontSize: "0.75rem", userSelect: "none" }}>
+          style={{ userSelect: "none" }}>
           Enabled:
         </span>
         <TimeFilterEnabledToggle enabled={enabled} onChange={onEnabledChange} />

@@ -289,28 +289,6 @@ export function formatUtcTimestamp(value: number | string | Date): string {
 }
 
 /**
- * @description Base inline styling for spinner increment and decrement buttons.
- * @author Cory Albrecht <cory@albrecht.name>
- * @date 2026-11-10
- * @updated 2026-11-10
- * @since 0.1.0-dev
- * @type {React.CSSProperties}
- */
-const SPINNER_BUTTON_BASE_STYLE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  border: "none",
-  background: "transparent",
-  padding: 0,
-  margin: 0,
-  lineHeight: 1,
-  color: "inherit",
-  height: "0.65rem",
-  width: "0.9rem",
-};
-
-/**
  * @component TimestampSpinner
  * @description Discrete non-cascading segmented UTC timestamp spinner component. Typed digits show as typed and are checked, limited and saved (firing `onChange`) only after a 1000 ms pause or on Tab, an arrow key, Enter or blur; Escape discards them. Only a full two-digit segment auto-advances.
  * @author Cory Albrecht <cory@albrecht.name>
@@ -574,75 +552,34 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
       className={`timestamp-spinner ${className} ${disabled ? "disabled" : ""}`.trim()}
       role='group'
       aria-label={ariaLabel}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        border: "1px solid var(--cartouche-input-border, #ccc)",
-        borderRadius: "0.2rem",
-        backgroundColor: "var(--cartouche-input-bg, #ffffff)",
-        color: "var(--cartouche-input-fg, #000000)",
-        fontFamily:
-          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-        fontSize: "0.85rem",
-        padding: "0.1rem 0.25rem",
-        boxSizing: "border-box",
-        opacity: disabled ? 0.5 : 1,
-        pointerEvents: disabled ? "none" : "auto",
-        ...style,
-      }}>
+      style={style}>
       {/* Year segment */}
       {renderSegmentInput("year", parts.year, 4, yearInputRef, "Year")}
-      <span
-        className='timestamp-spinner-divider'
-        style={{ userSelect: "none", padding: "0 0.05rem" }}>
-        -
-      </span>
+      <span className='timestamp-spinner-divider'>-</span>
 
       {/* Month segment */}
       {renderSegmentInput("month", parts.month, 2, monthInputRef, "Month")}
-      <span
-        className='timestamp-spinner-divider'
-        style={{ userSelect: "none", padding: "0 0.05rem" }}>
-        -
-      </span>
+      <span className='timestamp-spinner-divider'>-</span>
 
       {/* Day segment */}
       {renderSegmentInput("day", parts.day, 2, dayInputRef, "Day")}
-      <span
-        className='timestamp-spinner-divider timestamp-spinner-divider-space'
-        style={{ userSelect: "none", padding: "0 0.2rem" }}>
+      <span className='timestamp-spinner-divider timestamp-spinner-divider-space'>
         &nbsp;
       </span>
 
       {/* Hour segment */}
       {renderSegmentInput("hour", parts.hour, 2, hourInputRef, "Hour")}
-      <span
-        className='timestamp-spinner-divider'
-        style={{ userSelect: "none", padding: "0 0.05rem" }}>
-        :
-      </span>
+      <span className='timestamp-spinner-divider'>:</span>
 
       {/* Minute segment */}
       {renderSegmentInput("minute", parts.minute, 2, minuteInputRef, "Minute")}
-      <span
-        className='timestamp-spinner-divider'
-        style={{ userSelect: "none", padding: "0 0.05rem" }}>
-        :
-      </span>
+      <span className='timestamp-spinner-divider'>:</span>
 
       {/* Second segment */}
       {renderSegmentInput("second", parts.second, 2, secondInputRef, "Second")}
 
       {/* Vertical Spinner Up/Down Buttons */}
-      <div
-        className='timestamp-spinner-buttons'
-        style={{
-          display: "inline-flex",
-          flexDirection: "column",
-          marginLeft: "0.25rem",
-          justifyContent: "center",
-          userSelect: "none",
-        }}>
+      <div className='timestamp-spinner-buttons'>
         <button
           type='button'
           tabIndex={-1}
@@ -650,12 +587,11 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
           className='timestamp-spinner-btn timestamp-spinner-btn-up'
           disabled={disabled}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => handleStep(1)}
-          style={{
-            ...SPINNER_BUTTON_BASE_STYLE,
-            cursor: disabled ? "not-allowed" : "pointer",
-          }}>
-          <Icon path={mdiChevronUp} size='0.65rem' />
+          onClick={() => handleStep(1)}>
+          <Icon
+            path={mdiChevronUp}
+            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+          />
         </button>
         <button
           type='button'
@@ -664,12 +600,11 @@ export const TimestampSpinner: React.FC<TimestampSpinnerProps> = ({
           className='timestamp-spinner-btn timestamp-spinner-btn-down'
           disabled={disabled}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => handleStep(-1)}
-          style={{
-            ...SPINNER_BUTTON_BASE_STYLE,
-            cursor: disabled ? "not-allowed" : "pointer",
-          }}>
-          <Icon path={mdiChevronDown} size='0.65rem' />
+          onClick={() => handleStep(-1)}>
+          <Icon
+            path={mdiChevronDown}
+            size='calc(var(--cartouche-ui-icon-size, 24px) * 0.5)'
+          />
         </button>
       </div>
     </div>

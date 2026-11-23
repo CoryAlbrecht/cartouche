@@ -4,7 +4,7 @@
  * @description Component tests for ProjectPropertiesDialog modelled on the Layer Properties component tests: shared tabbed shell with a General tab, read-only Project File showing the full path or "(unsaved)", the Project Title bound to the draft, Cancel / Apply / OK footer, and Save As from the dialog applying the draft before saving and refreshing the file field.
  * @author Cory Albrecht <cory@albrecht.name>
  * @date 2026-11-12
- * @updated 2026-11-19
+ * @updated 2026-11-22
  * @since 0.1.0-dev
  * @see {@link ProjectPropertiesDialog}
  * @see {@link saveAsProjectFromPropertiesDialogAction}
@@ -378,7 +378,7 @@ describe("ProjectPropertiesDialog component (Ticket #271)", () => {
       "uses the shared TimeFilterControls component"
     );
     assert.ok(
-      html.includes('class="toolbar-btn active"'),
+      html.includes('class="toolbar-btn time-filter-icon-btn active"'),
       "Enabled toggle reflects the draft"
     );
     assert.ok(
